@@ -1,42 +1,28 @@
 # pi-tally
 
-Local prompt counters for [Pi](https://pi.dev).
+A small local prompt counter for Pi.
 
-`pi-tally` adds a compact footer tally and a `/tally` command. It counts local Pi user messages (“prompts”) and stores the counters locally so they persist across sessions.
-
-No collection. No network calls. No uploads.
+It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only. No network calls, uploads, or analytics.
 
 ## Install
 
-From this repo:
-
 ```bash
-pi install ~/Code/pi-tally/
-```
-
-Or from the repo directory:
-
-```bash
+git clone https://github.com/wdphoto/pi-tally.git
+cd pi-tally
 pi install ./
 ```
 
 Restart Pi after installing.
 
-For a one-off test without installing:
-
-```bash
-pi -e ./extensions/tally/index.ts
-```
-
 ## Use
 
-Run this once to count existing Pi sessions:
+Count your existing Pi session history once:
 
 ```text
 /tally run
 ```
 
-Show the full tally:
+Show the tally:
 
 ```text
 /tally
@@ -48,42 +34,38 @@ Show storage/index info:
 /tally status
 ```
 
-Footer format:
+The footer looks like this:
 
 ```text
 5/52/84↑
 ```
 
-Meaning:
+That means:
 
-- `5` — prompts on the active branch of the current session
-- `52` — prompts today
-- `84` — active-day average prompts/day
-- `↑` / `↓` — active-day average trend once there is enough history
+- `5` prompts on the active branch
+- `52` prompts today
+- `84` average prompts on active days
+- `↑` or `↓` trend once there is enough history
 
-## Local data
+## Data
 
-The counter file is stored at:
+The counter is stored locally at:
 
 ```text
 ~/.pi/agent/pi-tally.json
 ```
 
-If `PI_CODING_AGENT_DIR` is set, that directory is used instead.
-
-## Notes
-
-- A prompt is a Pi session entry where `message.role === "user"`.
-- All-time totals may include abandoned branches in Pi’s session tree.
-- The active-day average ignores days with fewer than 10 prompts when there are active days to average.
+Pi session files stay where Pi already stores them.
 
 ## Uninstall
 
+From the repo directory:
+
 ```bash
-pi remove ~/Code/pi-tally/
+pi remove ./
 ```
 
-Delete the local counter file if you want a clean slate:
+Optional clean slate:
 
 ```bash
 rm ~/.pi/agent/pi-tally.json

@@ -3,4 +3,8 @@ node_modules/
 coverage/
 dist/
 *.tgz
+*.log
+*.tmp
 .env
+.env.*
+.pi/

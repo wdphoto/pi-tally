@@ -4,7 +4,14 @@
   "description": "Local prompt counters for the Pi coding agent.",
   "type": "module",
   "license": "MIT",
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wdphoto/pi-tally.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wdphoto/pi-tally/issues"
+  },
+  "homepage": "https://github.com/wdphoto/pi-tally#readme",
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -15,9 +22,7 @@
   "files": [
     "extensions",
     "README.md",
-    "LICENSE",
-    "AGENTS.md",
-    "BUILD-PLAN.md"
+    "LICENSE"
   ],
   "scripts": {
     "check": "tsc --noEmit",
