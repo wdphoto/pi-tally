@@ -47,6 +47,17 @@ npm test
 npm run pack:dry
 ```
 
+## Releases
+
+Keep GitHub and npm releases in sync:
+
+- Bump `package.json` and `package-lock.json` together.
+- Run `npm run check`, `npm test`, and `npm run pack:dry` before release.
+- Commit the version bump and code changes.
+- Create and push the matching git tag, e.g. `v0.0.2`.
+- Publish the same version to npm.
+- Do not leave a pushed GitHub tag/version without the matching npm publish unless the user explicitly asks to pause.
+
 Local Pi test:
 
 ```bash
