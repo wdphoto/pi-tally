@@ -36,7 +36,7 @@ export function daysBetween(a: string, b: string): number {
     const [y = 1970, m = 1, d = 1] = s.split("-").map(Number);
     return Date.UTC(y || 1970, (m || 1) - 1, d || 1);
   };
-  return Math.max(1, Math.floor(Math.abs(parse(b) - parse(a)) / 86_400_000));
+  return Math.max(1, Math.floor(Math.abs(parse(b) - parse(a)) / 86_400_000) + 1);
 }
 
 export function recomputeAggregates(store: TallyStore, now = new Date()): TallyStore {
