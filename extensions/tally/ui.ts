@@ -55,8 +55,6 @@ export function detailLines(store: TallyStore, activeBranchPrompts: number, now 
     `Monthly avg    ${compactNumber(s.monthlyAverage)} prompts/day (active days in rolling 30d)`,
     `All time       ${compactNumber(s.allTimePrompts)} prompts across ${compactNumber(s.totalSessions)} sessions`,
     `Since          ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active / ${compactNumber(s.calendarDays)} calendar days)`,
-    "",
-    "Local counters only. No telemetry, no network, no upload.",
   ];
 }
 

@@ -42,7 +42,7 @@ Opinionated pushback: the prototype is useful, but shipping it as-is would look 
 
   ```text
   /tally
-  /tally rebuild
+  /tally run
   /tally status
   ```
 
@@ -191,8 +191,8 @@ Command behavior:
 
 ```text
 /tally          show detailed stats
-/tally rebuild  full rescan all sessions, with notification/progress
-/tally status   show storage/session paths and index health
+/tally run     count existing local session files
+/tally status  show storage/session paths and index health
 ```
 
 Acceptance:
@@ -248,7 +248,7 @@ README must include:
   - all-time totals include session-tree branches
   - historic counts are best-effort based on Pi session JSONL
 - Troubleshooting:
-  - `/tally rebuild`
+  - `/tally run`
   - where the store file lives
   - how to uninstall/remove package
 
@@ -278,7 +278,7 @@ Manual TUI checklist:
 - Send two prompts.
 - Navigate `/tree`; active branch count changes.
 - Run `/tally`.
-- Run `/tally rebuild`.
+- Run `/tally run`.
 - Resume older session.
 - Quit and restart; status persists.
 

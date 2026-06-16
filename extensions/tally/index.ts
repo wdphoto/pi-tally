@@ -110,15 +110,15 @@ export default function piTally(pi: ExtensionAPI) {
       const command = args.trim();
       store ??= await loadStore(paths.storeFile);
 
-      if (command === "rebuild" || command === "--rebuild") {
-        if (ctx.hasUI) ctx.ui.notify("pi-tally: rebuilding local counters from session files...", "info");
+      if (command === "run" || command === "rebuild" || command === "--rebuild") {
+        if (ctx.hasUI) ctx.ui.notify("pi-tally: counting local session files...", "info");
         const result = await rebuildStoreFromSessions(paths.sessionsDir);
         store = await reconcileCurrentSession(result.store, ctx.sessionManager);
         activeBranch = activeBranchPromptCount(ctx.sessionManager);
         arrow = trendArrow(store.previousActiveDayAverage, activeDayAverage(store));
         await saveStoreAtomic(paths.storeFile, store);
         setStatus(ctx);
-        if (ctx.hasUI) ctx.ui.notify(`pi-tally: rebuild complete (${result.skipped} skipped)`, "info");
+        if (ctx.hasUI) ctx.ui.notify(`pi-tally: count complete (${result.skipped} skipped)`, "info");
       } else if (command === "status") {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         await saveStoreAtomic(paths.storeFile, store);
@@ -126,7 +126,7 @@ export default function piTally(pi: ExtensionAPI) {
         setStatus(ctx);
         return;
       } else if (command.length > 0) {
-        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally rebuild, /tally status", "warning");
+        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally run, /tally status", "warning");
       } else {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         await saveStoreAtomic(paths.storeFile, store);

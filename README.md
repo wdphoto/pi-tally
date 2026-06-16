@@ -30,10 +30,10 @@ pi -e ./extensions/tally/index.ts
 
 ## Use
 
-Run this once to backfill existing Pi sessions:
+Run this once to count existing Pi sessions:
 
 ```text
-/tally rebuild
+/tally run
 ```
 
 Show the full tally:
