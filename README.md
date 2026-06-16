@@ -6,6 +6,14 @@ It adds a compact footer tally and a `/tally` command. It counts your local Pi u
 
 ## Install
 
+From npm:
+
+```bash
+pi install npm:pi-tally
+```
+
+Or from source:
+
 ```bash
 git clone https://github.com/wdphoto/pi-tally.git
 cd pi-tally
@@ -72,7 +80,13 @@ Pi session files stay where Pi already stores them.
 
 ## Uninstall
 
-From the repo directory:
+If installed from npm:
+
+```bash
+pi remove npm:pi-tally
+```
+
+If installed from source, from the repo directory:
 
 ```bash
 pi remove ./
