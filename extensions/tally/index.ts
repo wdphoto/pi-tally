@@ -101,7 +101,7 @@ export default function piTally(pi: ExtensionAPI) {
 
   function setStatus(ctx: any): void {
     if (!ctx.hasUI || !store) return;
-    ctx.ui.setStatus(STATUS_KEY, `${ctx.ui.theme.fg("dim", footerText(activeBranch, store, arrow))} |`);
+    ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", footerText(activeBranch, store, arrow)));
   }
 
   pi.registerCommand(COMMAND_NAME, {

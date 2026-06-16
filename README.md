@@ -51,7 +51,7 @@ Show storage/index info:
 Footer format:
 
 ```text
-5/52/84↑ |
+5/52/84↑
 ```
 
 Meaning:

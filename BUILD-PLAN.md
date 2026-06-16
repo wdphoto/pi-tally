@@ -33,7 +33,7 @@ Opinionated pushback: the prototype is useful, but shipping it as-is would look 
 - Footer status, default compact form:
 
   ```text
-  5/52/84↑ |
+  5/52/84↑
   ```
 
   Meaning: active-branch prompts / today prompts / active-day average, with optional trend arrow.
