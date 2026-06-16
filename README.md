@@ -25,12 +25,10 @@ From npm:
 pi install npm:pi-tally
 ```
 
-From git/source:
+From GitHub/source:
 
 ```bash
-git clone https://github.com/wdphoto/pi-tally.git
-cd pi-tally
-pi install ./
+pi install https://github.com/wdphoto/pi-tally
 ```
 
 Restart Pi after installing.
@@ -90,10 +88,10 @@ If installed from npm:
 pi remove npm:pi-tally
 ```
 
-If installed from git/source, from the repo directory:
+If installed from GitHub/source:
 
 ```bash
-pi remove ./
+pi remove https://github.com/wdphoto/pi-tally
 ```
 
 Optional clean slate:
