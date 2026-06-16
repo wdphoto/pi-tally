@@ -4,6 +4,8 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.4 - 2026-06-16
+
 - Added `/tally footer`, `/tally footer on`, and `/tally footer off` to toggle the footer tally locally.
 - Put npm install/uninstall instructions before GitHub/source instructions in the README.
 - Changed GitHub/source README instructions to use `pi install https://github.com/wdphoto/pi-tally` and matching `pi remove`.

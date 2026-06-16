@@ -17,6 +17,8 @@ That means:
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
 
+Hide or restore the footer with `/tally footer off`, `/tally footer on`, or `/tally footer` to toggle.
+
 ## Install
 
 From npm:
