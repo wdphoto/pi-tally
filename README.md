@@ -4,20 +4,33 @@ A small local prompt counter for Pi.
 
 It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only. No network calls, uploads, or analytics.
 
-## Install
+Footer example:
 
-From npm:
-
-```bash
-pi install npm:pi-tally
+```text
+5/52/84↑
 ```
 
-Or from source:
+That means:
+
+- `5` prompts on the active branch
+- `52` prompts today
+- `84` average prompts on active days
+- `↑` or `↓` trend once there is enough history
+
+## Install
+
+From git/source:
 
 ```bash
 git clone https://github.com/wdphoto/pi-tally.git
 cd pi-tally
 pi install ./
+```
+
+From npm:
+
+```bash
+pi install npm:pi-tally
 ```
 
 Restart Pi after installing.
@@ -36,18 +49,7 @@ Run this once after installing if you want old sessions included:
 /tally run
 ```
 
-The footer looks like this:
-
-```text
-5/52/84↑
-```
-
-That means:
-
-- `5` prompts on the active branch
-- `52` prompts today
-- `84` average prompts on active days
-- `↑` or `↓` trend once there is enough history
+After that, pi-tally updates live as you use Pi. Run `/tally run` again only for missed/imported sessions or a clean rebuild.
 
 ## Notes
 
@@ -56,16 +58,18 @@ A `/tally` report looks roughly like this:
 ```text
 pi-tally
 ────────
-Active branch  5 prompts
-Today          52 prompts (4.1/hr)
-Peak 5h/wk     121 prompts (24.2/hr)
-Active avg     84 prompts/day (days >=10)
-Weekly avg     96 prompts/day (active days in rolling 7d)
-Monthly avg    88 prompts/day (active days in rolling 30d)
-All time       5.6k prompts across 350 sessions
-Since          2026-03-07 (60 active / 101 calendar days)
+5h demand      avg 64 / high 91 / peak 121
+Active days    18 in last 30d
+Today          52 so far (4.1/hr)
+This branch    5
+Daily avg      84/day on active days
+7d avg         96/day on active days
+30d avg        88/day on active days
+All time       5.6k across 350 sessions
+Indexed since  2026-03-07 (60 active / 101 calendar days)
 ```
 
+`5h demand` summarizes active days' busiest 5-hour stretches over the last 30 days. `high` is the conservative high-use mark; `peak` is the biggest observed window.
 All counts come from local Pi session files. All-time totals may include inactive branches.
 
 ## Data
@@ -80,16 +84,16 @@ Pi session files stay where Pi already stores them.
 
 ## Uninstall
 
+If installed from git/source, from the repo directory:
+
+```bash
+pi remove ./
+```
+
 If installed from npm:
 
 ```bash
 pi remove npm:pi-tally
-```
-
-If installed from source, from the repo directory:
-
-```bash
-pi remove ./
 ```
 
 Optional clean slate:

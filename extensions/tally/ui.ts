@@ -1,9 +1,8 @@
-import { ACTIVE_DAY_MIN_PROMPTS } from "./config.ts";
 import {
   activeDayAverage,
   activeDayCounts,
   daysBetween,
-  peak5hWeekly,
+  fiveHourDemand,
   rollingAverage,
   todayHourlyRate,
   todayPrompts,
@@ -17,19 +16,17 @@ export function compactNumber(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : String(value);
 }
 
-export function footerText(activeBranchPrompts: number, store: TallyStore, arrow = ""): string {
-  return `${compactNumber(activeBranchPrompts)}/${compactNumber(todayPrompts(store))}/${compactNumber(activeDayAverage(store))}${arrow}`;
+export function footerText(activeBranchPrompts: number, store: TallyStore, arrow = "", now = new Date()): string {
+  return `${compactNumber(activeBranchPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
 }
 
 export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: number, now = new Date()): DetailSnapshot {
-  const peak = peak5hWeekly(store, now);
   const today = todayStr(now);
   return {
     activeBranchPrompts,
     todayPrompts: todayPrompts(store, now),
     hourlyRate: todayHourlyRate(store, now),
-    peak5hPrompts: peak.prompts,
-    peak5hRate: peak.rate,
+    fiveHourDemand: fiveHourDemand(store, now),
     activeDayAverage: activeDayAverage(store, now),
     weeklyAverage: rollingAverage(store, 7, now),
     monthlyAverage: rollingAverage(store, 30, now),
@@ -47,14 +44,15 @@ export function detailLines(store: TallyStore, activeBranchPrompts: number, now 
   return [
     "pi-tally",
     "────────",
-    `Active branch  ${compactNumber(s.activeBranchPrompts)} prompts`,
-    `Today          ${compactNumber(s.todayPrompts)} prompts${hourlySuffix}`,
-    `Peak 5h/wk     ${compactNumber(s.peak5hPrompts)} prompts (${s.peak5hRate}/hr)`,
-    `Active avg     ${compactNumber(s.activeDayAverage)} prompts/day (days >=${ACTIVE_DAY_MIN_PROMPTS})`,
-    `Weekly avg     ${compactNumber(s.weeklyAverage)} prompts/day (active days in rolling 7d)`,
-    `Monthly avg    ${compactNumber(s.monthlyAverage)} prompts/day (active days in rolling 30d)`,
-    `All time       ${compactNumber(s.allTimePrompts)} prompts across ${compactNumber(s.totalSessions)} sessions`,
-    `Since          ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active / ${compactNumber(s.calendarDays)} calendar days)`,
+    `5h demand      avg ${compactNumber(s.fiveHourDemand.average)} / high ${compactNumber(s.fiveHourDemand.high)} / peak ${compactNumber(s.fiveHourDemand.peak)}`,
+    `Active days    ${compactNumber(s.fiveHourDemand.activeDays)} in last ${s.fiveHourDemand.lookbackDays}d`,
+    `Today          ${compactNumber(s.todayPrompts)} so far${hourlySuffix}`,
+    `This branch    ${compactNumber(s.activeBranchPrompts)}`,
+    `Daily avg      ${compactNumber(s.activeDayAverage)}/day on active days`,
+    `7d avg         ${compactNumber(s.weeklyAverage)}/day on active days`,
+    `30d avg        ${compactNumber(s.monthlyAverage)}/day on active days`,
+    `All time       ${compactNumber(s.allTimePrompts)} across ${compactNumber(s.totalSessions)} sessions`,
+    `Indexed since  ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active / ${compactNumber(s.calendarDays)} calendar days)`,
   ];
 }
 

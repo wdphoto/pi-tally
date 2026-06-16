@@ -38,12 +38,19 @@ export interface ScanResult {
   skipped: number;
 }
 
+export interface FiveHourDemandStats {
+  average: number;
+  high: number;
+  peak: number;
+  activeDays: number;
+  lookbackDays: number;
+}
+
 export interface DetailSnapshot {
   activeBranchPrompts: number;
   todayPrompts: number;
   hourlyRate: string;
-  peak5hPrompts: number;
-  peak5hRate: string;
+  fiveHourDemand: FiveHourDemandStats;
   activeDayAverage: number;
   weeklyAverage: number;
   monthlyAverage: number;

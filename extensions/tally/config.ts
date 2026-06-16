@@ -6,6 +6,8 @@ export const STATUS_KEY = "pi-tally";
 export const COMMAND_NAME = "tally";
 export const STORE_FILE_NAME = "pi-tally.json";
 export const ACTIVE_DAY_MIN_PROMPTS = 10;
+export const FIVE_HOUR_DEMAND_LOOKBACK_DAYS = 30;
+export const FIVE_HOUR_WINDOW_HOURS = 5;
 
 export function resolveTallyPaths(env: NodeJS.ProcessEnv = process.env): TallyPaths {
   const agentDir = env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");

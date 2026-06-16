@@ -1,5 +1,5 @@
-import { ACTIVE_DAY_MIN_PROMPTS } from "./config.ts";
-import { STORE_VERSION, type FileRecord, type PromptFact, type TallyStore } from "./types.ts";
+import { ACTIVE_DAY_MIN_PROMPTS, FIVE_HOUR_DEMAND_LOOKBACK_DAYS, FIVE_HOUR_WINDOW_HOURS } from "./config.ts";
+import { STORE_VERSION, type FileRecord, type FiveHourDemandStats, type PromptFact, type TallyStore } from "./types.ts";
 
 export function createEmptyStore(now = new Date()): TallyStore {
   return {
@@ -189,23 +189,66 @@ export function todayHourlyRate(store: TallyStore, now = new Date()): string {
   return rate >= 0.05 ? rate.toFixed(1) : "—";
 }
 
-export function peak5hWeekly(store: TallyStore, now = new Date()): { prompts: number; rate: string } {
-  const buckets: number[] = [];
-  for (let day = 6; day >= 0; day--) {
-    const d = nDaysAgo(day, now);
-    for (let h = 0; h < 24; h++) {
-      buckets.push(store.hourly[`${d} ${String(h).padStart(2, "0")}`] ?? 0);
+function lowerBound(values: number[], target: number): number {
+  let lo = 0;
+  let hi = values.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if ((values[mid] ?? 0) < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function percentileNearestRank(values: number[], percentile: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(percentile * sorted.length) - 1));
+  return sorted[index] ?? 0;
+}
+
+function maxRollingWindowCount(starts: number[], allTimestamps: number[], windowMs: number): number {
+  let max = 0;
+  for (const start of starts) {
+    const from = lowerBound(allTimestamps, start);
+    const to = lowerBound(allTimestamps, start + windowMs);
+    max = Math.max(max, to - from);
+  }
+  return max;
+}
+
+export function fiveHourDemand(store: TallyStore, now = new Date(), lookbackDays = FIVE_HOUR_DEMAND_LOOKBACK_DAYS): FiveHourDemandStats {
+  const endDate = todayStr(now);
+  const startDate = nDaysAgo(Math.max(lookbackDays - 1, 0), now);
+  const activeDates = Object.keys(store.daily)
+    .filter((date) => date >= startDate && date <= endDate && (store.daily[date] ?? 0) >= ACTIVE_DAY_MIN_PROMPTS)
+    .sort();
+  const activeDateSet = new Set(activeDates);
+  const startsByDate = new Map<string, number[]>();
+  const allTimestamps: number[] = [];
+
+  for (const record of Object.values(store.files)) {
+    for (const prompt of record.prompts) {
+      if (prompt.date < startDate || prompt.date > endDate || !Number.isFinite(prompt.timestamp)) continue;
+      allTimestamps.push(prompt.timestamp);
+      if (!activeDateSet.has(prompt.date)) continue;
+      const starts = startsByDate.get(prompt.date) ?? [];
+      starts.push(prompt.timestamp);
+      startsByDate.set(prompt.date, starts);
     }
   }
 
-  let max = 0;
-  for (let start = 0; start <= buckets.length - 5; start++) {
-    let sum = 0;
-    for (let i = 0; i < 5; i++) sum += buckets[start + i] ?? 0;
-    if (sum > max) max = sum;
-  }
+  allTimestamps.sort((a, b) => a - b);
+  const windowMs = FIVE_HOUR_WINDOW_HOURS * 60 * 60 * 1000;
+  const dailyPeaks = activeDates.map((date) => maxRollingWindowCount(startsByDate.get(date) ?? [], allTimestamps, windowMs));
 
-  return max > 0 ? { prompts: max, rate: (max / 5).toFixed(1) } : { prompts: 0, rate: "—" };
+  return {
+    average: avgCounts(dailyPeaks),
+    high: percentileNearestRank(dailyPeaks, 0.9),
+    peak: dailyPeaks.length > 0 ? Math.max(...dailyPeaks) : 0,
+    activeDays: dailyPeaks.length,
+    lookbackDays,
+  };
 }
 
 export function totalPrompts(store: TallyStore): number {

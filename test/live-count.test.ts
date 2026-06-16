@@ -5,8 +5,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import piTally from "../extensions/tally/index.ts";
 
-const fixedNow = new Date("2026-06-15T12:00:00");
-
 test("message_end counts the pending user message before Pi persists it", async () => {
   const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
   const agentDir = join(tmpdir(), `pi-tally-live-${process.pid}-${Date.now()}`);
@@ -38,8 +36,10 @@ test("message_end counts the pending user message before Pi persists it", async 
       },
     };
 
+    const now = new Date();
+    const noonToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
     await handlers.get("message_end")?.({
-      message: { role: "user", content: "hi", timestamp: fixedNow.getTime() },
+      message: { role: "user", content: "hi", timestamp: noonToday },
     }, ctx);
 
     assert.equal(status, "1/1/1");

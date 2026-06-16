@@ -51,11 +51,13 @@ npm run pack:dry
 
 Keep GitHub and npm releases in sync:
 
+- Update `CHANGELOG.md` before commits/pushes, and check it again before release.
 - Bump `package.json` and `package-lock.json` together.
 - Run `npm run check`, `npm test`, and `npm run pack:dry` before release.
 - Commit the version bump and code changes.
 - Create and push the matching git tag, e.g. `v0.0.2`.
 - Publish the same version to npm.
+- Create the matching GitHub Release from the tag.
 - Do not leave a pushed GitHub tag/version without the matching npm publish unless the user explicitly asks to pause.
 
 Local Pi test:
@@ -94,6 +96,15 @@ Example:
 ```
 
 Do not add separators like trailing pipes. Pi composes extension statuses itself.
+
+## Stats notes
+
+- 5-hour demand stats are for GPT plan selection.
+- Default 5-hour demand lookback should be 30 days for now; all-indexed history may come later, but only if calculation remains bounded/incremental.
+- For large histories, prefer persisted per-day/window summaries over recomputing every prompt on each `/tally` display.
+- Count user messages only for now; no model-specific usage tracking yet.
+- `/tally run` should remain a one-time/backfill command. Normal future prompts should update live without asking users to rerun it.
+- Future question for user: daily average is intentionally simple active-day arithmetic mean; ask later whether to add a plain `Daily high` line if the average feels misleading.
 
 ## Storage
 
