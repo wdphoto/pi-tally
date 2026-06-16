@@ -4,7 +4,8 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
-- Changed GitHub/source README instructions to use `pi install https://github.com/wdphoto/pi-tally`.
+- Put npm install/uninstall instructions before GitHub/source instructions in the README.
+- Changed GitHub/source README instructions to use `pi install https://github.com/wdphoto/pi-tally` and matching `pi remove`.
 
 ## 0.0.3 - 2026-06-16
 

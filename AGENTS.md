@@ -19,6 +19,7 @@ Keep it boring, local, and reliable.
 - Do not add runtime dependencies unless there is a strong reason.
 - Do not scan all session history on startup. Full history indexing belongs behind `/tally run`.
 - Keep the README human-readable. No big manuals, no agent/internal planning notes.
+- In README install/uninstall sections, list npm first and GitHub/source second.
 - Keep `package.json.files` limited to runtime package contents.
 - Treat Pi session JSONL parsing defensively. Bad session files must not crash Pi.
 
