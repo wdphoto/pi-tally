@@ -32,6 +32,18 @@ test("migrateStore rebuilds aggregates from file records", () => {
   assert.equal(store.daily["2026-06-15"], 1);
   assert.equal(store.hourly["2026-06-15 09"], 1);
   assert.equal(store.sessions.s1, 1);
+  assert.equal(store.footerEnabled, true);
+});
+
+test("migrateStore preserves disabled footer setting", () => {
+  const store = migrateStore({
+    version: 1,
+    updatedAt: fixedNow.toISOString(),
+    footerEnabled: false,
+    files: {},
+  }, fixedNow);
+
+  assert.equal(store.footerEnabled, false);
 });
 
 test("saveStoreAtomic writes a loadable local persistence file", async () => {

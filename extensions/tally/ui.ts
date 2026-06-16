@@ -63,6 +63,7 @@ export function statusLines(paths: TallyPaths, store: TallyStore): string[] {
     `Store      ${paths.storeFile}`,
     `Sessions   ${paths.sessionsDir}`,
     `Indexed    ${compactNumber(Object.keys(store.files).length)} session files`,
+    `Footer     ${store.footerEnabled === false ? "disabled" : "enabled"}`,
     `Updated    ${store.updatedAt}`,
     "",
     "pi-tally only counts local Pi session messages and stores the tally locally.",

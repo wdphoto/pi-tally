@@ -8,6 +8,7 @@ export function createEmptyStore(now = new Date()): TallyStore {
     daily: {},
     hourly: {},
     sessions: {},
+    footerEnabled: true,
     updatedAt: now.toISOString(),
   };
 }
@@ -46,6 +47,7 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
     daily: {},
     hourly: {},
     sessions: {},
+    footerEnabled: store.footerEnabled !== false,
     updatedAt: now.toISOString(),
     ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),
   };
@@ -112,6 +114,7 @@ export function replaceFileRecordIncremental(store: TallyStore, record: FileReco
     daily,
     hourly,
     sessions,
+    footerEnabled: store.footerEnabled !== false,
     updatedAt: now.toISOString(),
     ...(earliestDate ? { earliestDate } : {}),
     ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),

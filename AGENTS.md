@@ -98,6 +98,8 @@ Example:
 
 Do not add separators like trailing pipes. Pi composes extension statuses itself.
 
+Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tally footer off`. This should persist locally and not require `/reload`.
+
 ## Stats notes
 
 - 5-hour demand stats are for GPT plan selection.

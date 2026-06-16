@@ -24,6 +24,7 @@ export interface TallyStore {
   sessions: Record<string, number>;
   earliestDate?: string;
   previousActiveDayAverage?: number;
+  footerEnabled: boolean;
   updatedAt: string;
 }
 

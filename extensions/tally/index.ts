@@ -143,20 +143,33 @@ export default function piTally(pi: ExtensionAPI) {
 
   function setStatus(ctx: any): void {
     if (!ctx.hasUI || !store) return;
+    if (store.footerEnabled === false) {
+      ctx.ui.setStatus(STATUS_KEY, undefined);
+      return;
+    }
     ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", footerText(activeBranch, store, arrow)));
   }
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Show local Pi prompt counters",
     handler: async (args, ctx) => {
-      const command = args.trim();
+      const command = args.trim().replace(/\s+/g, " ");
       store ??= await loadStore(paths.storeFile);
+
+      if (command === "footer" || command === "footer on" || command === "footer off") {
+        const enabled = command === "footer" ? store.footerEnabled === false : command === "footer on";
+        store = { ...store, footerEnabled: enabled, updatedAt: new Date().toISOString() };
+        await saveNow(store);
+        setStatus(ctx);
+        if (ctx.hasUI) ctx.ui.notify(`pi-tally: footer ${enabled ? "enabled" : "disabled"}`, "info");
+        return;
+      }
 
       if (command === "run" || command === "rebuild" || command === "--rebuild") {
         if (ctx.hasUI) ctx.ui.notify("pi-tally: counting local session files...", "info");
         const previousActiveDayAverage = store.previousActiveDayAverage ?? activeDayAverage(store);
         const result = await rebuildStoreFromSessions(paths.sessionsDir);
-        store = await reconcileCurrentSession({ ...result.store, previousActiveDayAverage }, ctx.sessionManager);
+        store = await reconcileCurrentSession({ ...result.store, previousActiveDayAverage, footerEnabled: store.footerEnabled !== false }, ctx.sessionManager);
         activeBranch = activeBranchPromptCount(ctx.sessionManager);
         arrow = trendArrowForStore(store);
         await saveNow(store);
@@ -169,7 +182,7 @@ export default function piTally(pi: ExtensionAPI) {
         setStatus(ctx);
         return;
       } else if (command.length > 0) {
-        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally run, /tally status", "warning");
+        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally run, /tally status, /tally footer [on|off]", "warning");
       } else {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         activeBranch = activeBranchPromptCount(ctx.sessionManager);

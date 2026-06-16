@@ -47,6 +47,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
     daily: {},
     hourly: {},
     sessions: {},
+    footerEnabled: raw.footerEnabled !== false,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now.toISOString(),
     ...(typeof raw.previousActiveDayAverage === "number" ? { previousActiveDayAverage: raw.previousActiveDayAverage } : {}),
   };

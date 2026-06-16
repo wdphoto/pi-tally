@@ -36,9 +36,12 @@ Restart Pi after installing.
 ## Commands
 
 ```text
-/tally         show your prompt stats
-/tally run     count existing Pi session history
-/tally status  show storage/index info
+/tally              show your prompt stats
+/tally run          count existing Pi session history
+/tally status       show storage/index info
+/tally footer       toggle footer tally on/off
+/tally footer on    show footer tally
+/tally footer off   hide footer tally
 ```
 
 Run this once after installing if you want old sessions included:
