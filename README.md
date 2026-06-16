@@ -14,24 +14,18 @@ pi install ./
 
 Restart Pi after installing.
 
-## Use
+## Commands
 
-Count your existing Pi session history once:
+```text
+/tally         show your prompt stats
+/tally run     count existing Pi session history
+/tally status  show storage/index info
+```
+
+Run this once after installing if you want old sessions included:
 
 ```text
 /tally run
-```
-
-Show the tally:
-
-```text
-/tally
-```
-
-Show storage/index info:
-
-```text
-/tally status
 ```
 
 The footer looks like this:
@@ -46,6 +40,25 @@ That means:
 - `52` prompts today
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
+
+## Notes
+
+A `/tally` report looks roughly like this:
+
+```text
+pi-tally
+────────
+Active branch  5 prompts
+Today          52 prompts (4.1/hr)
+Peak 5h/wk     121 prompts (24.2/hr)
+Active avg     84 prompts/day (days >=10)
+Weekly avg     96 prompts/day (active days in rolling 7d)
+Monthly avg    88 prompts/day (active days in rolling 30d)
+All time       5.6k prompts across 350 sessions
+Since          2026-03-07 (60 active / 101 calendar days)
+```
+
+All counts come from local Pi session files. All-time totals may include inactive branches.
 
 ## Data
 
