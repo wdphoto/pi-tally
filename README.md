@@ -1,108 +1,90 @@
 # pi-tally
 
-Local prompt counters for [Pi](https://pi.dev). MIT licensed.
+Local prompt counters for [Pi](https://pi.dev).
 
-`pi-tally` adds a compact footer tally and a `/tally` command. It counts local Pi user messages (“prompts”) and saves those counters locally so the tally survives across sessions.
+`pi-tally` adds a compact footer tally and a `/tally` command. It counts local Pi user messages (“prompts”) and stores the counters locally so they persist across sessions.
 
-It does **not** collect data. It does **not** call the network. It does **not** upload anything. The persistence file lives on your machine next to Pi’s normal agent data.
+No collection. No network calls. No uploads.
 
 ## Install
 
-From a local checkout:
+From this repo:
+
+```bash
+pi install ~/Code/pi-tally/
+```
+
+Or from the repo directory:
 
 ```bash
 pi install ./
 ```
 
-For quick testing without installing:
+Restart Pi after installing.
+
+For a one-off test without installing:
 
 ```bash
 pi -e ./extensions/tally/index.ts
 ```
 
-From GitHub once published:
+## Use
 
-```bash
-pi install git:github.com/<user>/pi-tally
-```
-
-## What you get
-
-Footer status:
+Run this once to backfill existing Pi sessions:
 
 ```text
-5/52/84↑ |
+/tally rebuild
 ```
 
-Legend:
-
-- `5` — prompts on the active branch of the current session
-- `52` — prompts today
-- `84` — active-day average prompts/day
-- `↑` / `↓` — active-day average changed since the previous shutdown
-
-Detailed view:
+Show the full tally:
 
 ```text
 /tally
 ```
 
-Maintenance:
+Show storage/index info:
 
 ```text
-/tally rebuild   # rescan local Pi session files; run once to backfill old sessions
-/tally status    # show local paths and index health
+/tally status
 ```
 
-## Privacy and storage
+Footer format:
 
-`pi-tally` is just a local counter.
+```text
+5/52/84↑ |
+```
 
-- No telemetry.
-- No network requests.
-- No analytics service.
-- No external database.
-- No background file watcher.
+Meaning:
 
-By default the store file is:
+- `5` — prompts on the active branch of the current session
+- `52` — prompts today
+- `84` — active-day average prompts/day
+- `↑` / `↓` — average changed since previous shutdown
+
+## Local data
+
+The counter file is stored at:
 
 ```text
 ~/.pi/agent/pi-tally.json
 ```
 
-If you set `PI_CODING_AGENT_DIR`, that directory is used instead. If you set `PI_CODING_AGENT_SESSION_DIR`, `/tally rebuild` scans that session directory.
+If `PI_CODING_AGENT_DIR` is set, that directory is used instead.
 
-## Caveats
+## Notes
 
-- A “prompt” means a Pi session entry where `message.role === "user"`.
-- “Active branch” uses Pi’s current session branch.
-- All-time totals count prompts in indexed session files and may include abandoned branches in Pi’s session tree.
-- Historic totals are best-effort based on Pi’s JSONL session files.
+- A prompt is a Pi session entry where `message.role === "user"`.
+- All-time totals may include abandoned branches in Pi’s session tree.
 - The active-day average ignores days with fewer than 10 prompts when there are active days to average.
-
-## Development
-
-```bash
-npm install
-npm run check
-npm test
-npm run pack:dry
-```
 
 ## Uninstall
 
 ```bash
-pi remove ./
+pi remove ~/Code/pi-tally/
 ```
 
-Or remove the Git/npm package source you installed.
-
-The local counter file can be deleted manually if you want a clean slate:
+Delete the local counter file if you want a clean slate:
 
 ```bash
 rm ~/.pi/agent/pi-tally.json
 ```
-
-## License
-
-MIT. See [LICENSE](./LICENSE).

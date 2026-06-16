@@ -111,7 +111,6 @@ Create:
 
 - `package.json`
 - `README.md`
-- `LICENSE`
 - `extensions/tally/`
 - `test/`
 - `tsconfig.json`
