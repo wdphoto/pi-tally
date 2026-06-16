@@ -1,0 +1,41 @@
+{
+  "name": "pi-tally",
+  "version": "0.1.0",
+  "description": "Local prompt counters for the Pi coding agent.",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "tally",
+    "stats"
+  ],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "AGENTS.md",
+    "BUILD-PLAN.md"
+  ],
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test \"test/**/*.test.ts\"",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
