@@ -19,18 +19,18 @@ That means:
 
 ## Install
 
+From npm:
+
+```bash
+pi install npm:pi-tally
+```
+
 From git/source:
 
 ```bash
 git clone https://github.com/wdphoto/pi-tally.git
 cd pi-tally
 pi install ./
-```
-
-From npm:
-
-```bash
-pi install npm:pi-tally
 ```
 
 Restart Pi after installing.
@@ -84,16 +84,16 @@ Pi session files stay where Pi already stores them.
 
 ## Uninstall
 
-If installed from git/source, from the repo directory:
-
-```bash
-pi remove ./
-```
-
 If installed from npm:
 
 ```bash
 pi remove npm:pi-tally
+```
+
+If installed from git/source, from the repo directory:
+
+```bash
+pi remove ./
 ```
 
 Optional clean slate:
