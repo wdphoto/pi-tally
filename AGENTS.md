@@ -44,14 +44,15 @@ pi-tally/
   LICENSE
   AGENTS.md
   BUILD-PLAN.md
-  src/
-    index.ts          # Pi extension entrypoint
-    config.ts
-    scanner.ts
-    storage.ts
-    stats.ts
-    ui.ts
-    types.ts
+  extensions/
+    tally/
+      index.ts        # Pi extension entrypoint
+      config.ts
+      scanner.ts
+      storage.ts
+      stats.ts
+      ui.ts
+      types.ts
   test/
     fixtures/
     *.test.ts
@@ -62,10 +63,9 @@ pi-tally/
 ```json
 {
   "keywords": ["pi-package", "pi-extension"],
-  "pi": { "extensions": ["./src/index.ts"] },
+  "pi": { "extensions": ["./extensions"] },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-coding-agent": "*"
   }
 }
 ```
@@ -112,5 +112,5 @@ Before publishing or tagging:
 
 - README has install, usage, privacy, command reference, footer legend, and caveats.
 - `npm pack --dry-run` contains only intended files.
-- Test local install with `pi -e ./src/index.ts` and `pi install ./`.
+- Test local install with `pi -e ./extensions/tally/index.ts` and `pi install ./`.
 - No personal paths, backup references, or prototype command names remain.

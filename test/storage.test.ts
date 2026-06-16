@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createEmptyStore, recomputeAggregates } from "../src/stats.ts";
-import { loadStore, migrateStore, saveStoreAtomic } from "../src/storage.ts";
+import { createEmptyStore, recomputeAggregates } from "../extensions/tally/stats.ts";
+import { loadStore, migrateStore, saveStoreAtomic } from "../extensions/tally/storage.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 

@@ -13,7 +13,7 @@
     "stats"
   ],
   "files": [
-    "src",
+    "extensions",
     "README.md",
     "LICENSE",
     "AGENTS.md",
@@ -26,7 +26,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./extensions"
     ]
   },
   "peerDependencies": {

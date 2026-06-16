@@ -17,7 +17,7 @@ pi install ./
 For quick testing without installing:
 
 ```bash
-pi -e ./src/index.ts
+pi -e ./extensions/tally/index.ts
 ```
 
 From GitHub once published:

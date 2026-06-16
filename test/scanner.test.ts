@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { parseSessionJsonl, rebuildStoreFromSessions, scanAllSessions } from "../src/scanner.ts";
+import { parseSessionJsonl, rebuildStoreFromSessions, scanAllSessions } from "../extensions/tally/scanner.ts";
 
 function sessionJsonl(sessionId: string, entries: string[]): string {
   return [

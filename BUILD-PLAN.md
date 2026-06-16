@@ -29,7 +29,7 @@ Opinionated pushback: the prototype is useful, but shipping it as-is would look 
 ### v1 goals
 
 - Pi package named `pi-tally`.
-- One extension entrypoint: `src/index.ts`.
+- One extension entrypoint: `extensions/tally/index.ts`.
 - Footer status, default compact form:
 
   ```text
@@ -61,7 +61,7 @@ Opinionated pushback: the prototype is useful, but shipping it as-is would look 
 ## Architecture
 
 ```text
-src/
+extensions/tally/
   index.ts       Pi extension factory: events, commands, lifecycle only
   config.ts      constants, env/path resolution, command/status keys
   types.ts       storage records, prompt facts, rollup types
@@ -112,7 +112,7 @@ Create:
 - `package.json`
 - `README.md`
 - `LICENSE`
-- `src/`
+- `extensions/tally/`
 - `test/`
 - `tsconfig.json`
 - test runner config, preferably Vitest
@@ -120,7 +120,7 @@ Create:
 Package manifest requirements:
 
 - `keywords`: include `pi-package`, `pi-extension`.
-- `pi.extensions`: `[`./src/index.ts`]`.
+- `pi.extensions`: `["./extensions"]`.
 - Pi packages as peer dependencies with `"*"` ranges when imported.
 - No runtime third-party dependency unless required.
 
@@ -168,7 +168,7 @@ Acceptance:
 
 ### Phase 3 — Pi extension wiring
 
-Implement `src/index.ts`:
+Implement `extensions/tally/index.ts`:
 
 - Register `/tally` command.
 - `session_start`:
@@ -198,7 +198,7 @@ Command behavior:
 
 Acceptance:
 
-- `pi -e ./src/index.ts` loads.
+- `pi -e ./extensions/tally/index.ts` loads.
 - Footer appears and updates after a user prompt.
 - `/tally` works in TUI.
 - Non-TUI modes do not crash.
@@ -238,7 +238,7 @@ README must include:
 - Temporary test:
 
   ```bash
-  pi -e ./src/index.ts
+  pi -e ./extensions/tally/index.ts
   ```
 
 - Command reference.
@@ -267,7 +267,7 @@ Run:
 npm run check
 npm test
 npm pack --dry-run
-pi -e ./src/index.ts
+pi -e ./extensions/tally/index.ts
 pi install ./
 pi list
 pi remove ./

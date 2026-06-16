@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { footerText } from "../src/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, recomputeAggregates, trendArrow } from "../src/stats.ts";
+import { footerText } from "../extensions/tally/ui.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, recomputeAggregates, trendArrow } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
