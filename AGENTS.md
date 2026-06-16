@@ -110,7 +110,8 @@ Tests should cover:
 
 Before publishing or tagging:
 
-- README has install, usage, privacy, command reference, footer legend, and caveats.
-- `npm pack --dry-run` contains only intended files.
+- README has install, usage, privacy, command reference, footer legend, caveats, and license.
+- Keep the MIT `LICENSE` file in the package.
+- `npm pack --dry-run` contains only intended files, including README, AGENTS.md, BUILD-PLAN.md, LICENSE, and `extensions/tally/*`.
 - Test local install with `pi -e ./extensions/tally/index.ts` and `pi install ./`.
 - No personal paths, backup references, or prototype command names remain.

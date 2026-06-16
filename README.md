@@ -1,6 +1,6 @@
 # pi-tally
 
-Local prompt counters for [Pi](https://pi.dev).
+Local prompt counters for [Pi](https://pi.dev). MIT licensed.
 
 `pi-tally` adds a compact footer tally and a `/tally` command. It counts local Pi user messages (“prompts”) and saves those counters locally so the tally survives across sessions.
 
@@ -105,4 +105,4 @@ rm ~/.pi/agent/pi-tally.json
 
 ## License
 
-MIT
+MIT. See [LICENSE](./LICENSE).
