@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { COMMAND_NAME, STATUS_KEY, resolveTallyPaths } from "./config.ts";
 import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts";
 import { loadStore, saveStoreAtomic } from "./storage.ts";
-import { activeDayAverage, countUserMessages, promptFactFromEntry, recomputeAggregates, trendArrowForStore } from "./stats.ts";
+import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, trendArrowForStore } from "./stats.ts";
 import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
 import { detailLines, footerText, statusLines, truncatePlainLine } from "./ui.ts";
 
@@ -32,6 +32,25 @@ function currentSessionRecord(sessionManager: any): FileRecord | undefined {
   };
 }
 
+function currentSessionRecordWithPendingUserMessage(sessionManager: any, message: unknown): FileRecord | undefined {
+  const record = currentSessionRecord(sessionManager);
+  if (!record) return undefined;
+
+  const fact = promptFactFromEntry({
+    type: "message",
+    timestamp: (message as { timestamp?: unknown })?.timestamp,
+    message,
+  });
+  if (!fact) return record;
+
+  const earliestDate = !record.earliestDate || fact.date < record.earliestDate ? fact.date : record.earliestDate;
+  return {
+    ...record,
+    prompts: [...record.prompts, fact],
+    earliestDate,
+  };
+}
+
 async function currentSessionRecordWithStat(sessionManager: any): Promise<FileRecord | undefined> {
   const record = currentSessionRecord(sessionManager);
   if (!record) return undefined;
@@ -51,10 +70,22 @@ function activeBranchPromptCount(sessionManager: any): number {
   }
 }
 
+function preserveKnownFileStats(store: TallyStore, record: FileRecord): FileRecord {
+  const known = store.files[record.path];
+  if (!known) return record;
+  return { ...record, mtimeMs: known.mtimeMs, size: known.size };
+}
+
+function reconcilePendingUserMessage(store: TallyStore, sessionManager: any, message: unknown): TallyStore {
+  const record = currentSessionRecordWithPendingUserMessage(sessionManager, message);
+  if (!record) return store;
+  return replaceFileRecordIncremental(store, preserveKnownFileStats(store, record));
+}
+
 async function reconcileCurrentSession(store: TallyStore, sessionManager: any): Promise<TallyStore> {
   const record = await currentSessionRecordWithStat(sessionManager);
   if (!record) return store;
-  return recomputeAggregates({ ...store, files: { ...store.files, [record.path]: record } });
+  return replaceFileRecordIncremental(store, record);
 }
 
 async function showLines(ctx: any, lines: string[]): Promise<void> {
@@ -88,6 +119,17 @@ export default function piTally(pi: ExtensionAPI) {
   let store: TallyStore | undefined;
   let activeBranch = 0;
   let arrow = "";
+  let pendingSave: Promise<void> = Promise.resolve();
+
+  function queueSave(snapshot: TallyStore): void {
+    pendingSave = pendingSave.catch(() => undefined).then(() => saveStoreAtomic(paths.storeFile, snapshot));
+    void pendingSave.catch(() => undefined);
+  }
+
+  async function saveNow(snapshot: TallyStore): Promise<void> {
+    await pendingSave.catch(() => undefined);
+    await saveStoreAtomic(paths.storeFile, snapshot);
+  }
 
   async function loadAndRefresh(ctx: any): Promise<void> {
     store = await loadStore(paths.storeFile);
@@ -95,8 +137,8 @@ export default function piTally(pi: ExtensionAPI) {
     store = await reconcileCurrentSession(store, ctx.sessionManager);
     activeBranch = activeBranchPromptCount(ctx.sessionManager);
     arrow = trendArrowForStore(store);
-    await saveStoreAtomic(paths.storeFile, store);
     setStatus(ctx);
+    queueSave(store);
   }
 
   function setStatus(ctx: any): void {
@@ -117,12 +159,12 @@ export default function piTally(pi: ExtensionAPI) {
         store = await reconcileCurrentSession({ ...result.store, previousActiveDayAverage }, ctx.sessionManager);
         activeBranch = activeBranchPromptCount(ctx.sessionManager);
         arrow = trendArrowForStore(store);
-        await saveStoreAtomic(paths.storeFile, store);
+        await saveNow(store);
         setStatus(ctx);
         if (ctx.hasUI) ctx.ui.notify(`pi-tally: count complete (${result.skipped} skipped)`, "info");
       } else if (command === "status") {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
-        await saveStoreAtomic(paths.storeFile, store);
+        await saveNow(store);
         await showLines(ctx, statusLines(paths, store));
         setStatus(ctx);
         return;
@@ -132,7 +174,7 @@ export default function piTally(pi: ExtensionAPI) {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         activeBranch = activeBranchPromptCount(ctx.sessionManager);
         arrow = trendArrowForStore(store);
-        await saveStoreAtomic(paths.storeFile, store);
+        await saveNow(store);
         setStatus(ctx);
       }
 
@@ -147,11 +189,11 @@ export default function piTally(pi: ExtensionAPI) {
   pi.on("message_end", async (event, ctx) => {
     if (event.message?.role !== "user") return;
     store ??= await loadStore(paths.storeFile);
-    activeBranch = activeBranchPromptCount(ctx.sessionManager);
-    store = await reconcileCurrentSession(store, ctx.sessionManager);
+    activeBranch = activeBranchPromptCount(ctx.sessionManager) + 1;
+    store = reconcilePendingUserMessage(store, ctx.sessionManager, event.message);
     arrow = trendArrowForStore(store);
-    await saveStoreAtomic(paths.storeFile, store);
     setStatus(ctx);
+    queueSave(store);
   });
 
   pi.on("session_tree", async (_event, ctx) => {
@@ -164,6 +206,6 @@ export default function piTally(pi: ExtensionAPI) {
     store ??= await loadStore(paths.storeFile);
     store = await reconcileCurrentSession(store, ctx.sessionManager);
     store = { ...store, previousActiveDayAverage: activeDayAverage(store) };
-    await saveStoreAtomic(paths.storeFile, store);
+    await saveNow(store);
   });
 }

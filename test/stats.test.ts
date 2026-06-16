@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { footerText } from "../extensions/tally/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, recomputeAggregates, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, recomputeAggregates, replaceFileRecordIncremental, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
@@ -60,6 +60,45 @@ test("footerText formats compact counters", () => {
   }, fixedNow);
 
   assert.equal(footerText(5, store, "↑"), "5/12/12↑");
+});
+
+test("replaceFileRecordIncremental updates aggregates without a full recompute", () => {
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      current: {
+        path: "current",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [{ timestamp: 1, date: "2026-06-15", hour: "10" }],
+      },
+      old: {
+        path: "old",
+        sessionId: "s2",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [{ timestamp: 2, date: "2026-06-14", hour: "09" }],
+      },
+    },
+  }, fixedNow);
+
+  const updated = replaceFileRecordIncremental(store, {
+    path: "current",
+    sessionId: "s1",
+    mtimeMs: 1,
+    size: 1,
+    prompts: [
+      { timestamp: 1, date: "2026-06-15", hour: "10" },
+      { timestamp: 3, date: "2026-06-15", hour: "11" },
+    ],
+  }, fixedNow);
+
+  assert.equal(updated.daily["2026-06-15"], 2);
+  assert.equal(updated.daily["2026-06-14"], 1);
+  assert.equal(updated.hourly["2026-06-15 11"], 1);
+  assert.equal(updated.sessions.s1, 2);
+  assert.equal(updated.sessions.s2, 1);
 });
 
 test("trendArrow keeps showing direction when a baseline exists", () => {

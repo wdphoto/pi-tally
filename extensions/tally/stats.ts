@@ -65,8 +65,61 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
   return next;
 }
 
+function adjustCount(map: Record<string, number>, key: string, delta: number): void {
+  const next = (map[key] ?? 0) + delta;
+  if (next <= 0) delete map[key];
+  else map[key] = next;
+}
+
+function earliestForRecord(record: FileRecord): string | undefined {
+  if (record.earliestDate) return record.earliestDate;
+  return record.prompts.reduce<string | undefined>((earliest, prompt) => {
+    if (!earliest || prompt.date < earliest) return prompt.date;
+    return earliest;
+  }, undefined);
+}
+
+export function replaceFileRecordIncremental(store: TallyStore, record: FileRecord, now = new Date()): TallyStore {
+  const previous = store.files[record.path];
+  const files = { ...store.files, [record.path]: record };
+  const daily = { ...store.daily };
+  const hourly = { ...store.hourly };
+  const sessions = { ...store.sessions };
+
+  if (previous) {
+    adjustCount(sessions, previous.sessionId, -previous.prompts.length);
+    for (const prompt of previous.prompts) {
+      adjustCount(daily, prompt.date, -1);
+      adjustCount(hourly, `${prompt.date} ${prompt.hour}`, -1);
+    }
+  }
+
+  adjustCount(sessions, record.sessionId, record.prompts.length);
+  for (const prompt of record.prompts) {
+    adjustCount(daily, prompt.date, 1);
+    adjustCount(hourly, `${prompt.date} ${prompt.hour}`, 1);
+  }
+
+  let earliestDate: string | undefined;
+  for (const file of Object.values(files)) {
+    const candidate = earliestForRecord(file);
+    if (candidate && (!earliestDate || candidate < earliestDate)) earliestDate = candidate;
+  }
+
+  return {
+    version: STORE_VERSION,
+    files,
+    daily,
+    hourly,
+    sessions,
+    updatedAt: now.toISOString(),
+    ...(earliestDate ? { earliestDate } : {}),
+    ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),
+  };
+}
+
 export function replaceFileRecord(store: TallyStore, record: FileRecord): TallyStore {
-  return recomputeAggregates({ ...store, files: { ...store.files, [record.path]: record } });
+  return replaceFileRecordIncremental(store, record);
 }
 
 export function isUserMessageEntry(entry: unknown): boolean {
