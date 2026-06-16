@@ -59,7 +59,7 @@ Meaning:
 - `5` — prompts on the active branch of the current session
 - `52` — prompts today
 - `84` — active-day average prompts/day
-- `↑` / `↓` — average changed since previous shutdown
+- `↑` / `↓` — active-day average trend once there is enough history
 
 ## Local data
 

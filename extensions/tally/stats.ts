@@ -165,7 +165,22 @@ export function totalSessions(store: TallyStore): number {
 
 export function trendArrow(previous: number | undefined, current: number): "" | "↑" | "↓" {
   if (previous === undefined) return "";
-  if (current > previous) return "↑";
-  if (current < previous) return "↓";
-  return "";
+  return current >= previous ? "↑" : "↓";
+}
+
+export function trendArrowForStore(store: TallyStore, now = new Date()): "" | "↑" | "↓" {
+  const current = activeDayAverage(store, now);
+  const storedTrend = trendArrow(store.previousActiveDayAverage, current);
+  if (storedTrend) return storedTrend;
+
+  const activeCounts = activeDayCounts(store, undefined, now);
+  if (activeCounts.length < 2) return "";
+
+  const recentAverage = rollingAverage(store, 7, now);
+  if (recentAverage > 0) return recentAverage >= current ? "↑" : "↓";
+
+  const latestActiveCount = Object.entries(store.daily)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .find(([, count]) => count >= ACTIVE_DAY_MIN_PROMPTS)?.[1];
+  return latestActiveCount === undefined ? "" : latestActiveCount >= current ? "↑" : "↓";
 }

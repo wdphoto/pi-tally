@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { footerText } from "../extensions/tally/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, recomputeAggregates, trendArrow } from "../extensions/tally/stats.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, recomputeAggregates, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
@@ -62,9 +62,33 @@ test("footerText formats compact counters", () => {
   assert.equal(footerText(5, store, "↑"), "5/12/12↑");
 });
 
-test("trendArrow only reports real movement", () => {
+test("trendArrow keeps showing direction when a baseline exists", () => {
   assert.equal(trendArrow(undefined, 3), "");
   assert.equal(trendArrow(2, 3), "↑");
   assert.equal(trendArrow(4, 3), "↓");
-  assert.equal(trendArrow(3, 3), "");
+  assert.equal(trendArrow(3, 3), "↑");
+});
+
+test("trendArrowForStore falls back to recent activity once there is enough data", () => {
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      old: {
+        path: "old",
+        sessionId: "old",
+        mtimeMs: 0,
+        size: 0,
+        prompts: Array.from({ length: 20 }, (_, i) => ({ timestamp: i, date: "2026-06-01", hour: "10" })),
+      },
+      recent: {
+        path: "recent",
+        sessionId: "recent",
+        mtimeMs: 0,
+        size: 0,
+        prompts: Array.from({ length: 40 }, (_, i) => ({ timestamp: i, date: "2026-06-15", hour: "10" })),
+      },
+    },
+  }, fixedNow);
+
+  assert.equal(trendArrowForStore(store, fixedNow), "↑");
 });
