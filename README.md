@@ -12,8 +12,8 @@ Footer example:
 
 That means:
 
-- `5` prompts on the active branch
-- `52` prompts today
+- `5` prompts today on the active Pi tree path
+- `52` prompts today overall
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
 
@@ -65,8 +65,9 @@ pi-tally
 Active days    18 in last 30d
 Model          deepseek/deepseek-v4-pro
 Today          52 so far (4.1/hr)
-This branch    5
+Tree path      5
 Daily avg      84/day on active days
+Daily high     221
 7d avg         96/day on active days
 30d avg        88/day on active days
 All time       5.6k across 350 sessions
@@ -74,7 +75,8 @@ Indexed since  2026-03-07 (60 active / 101 calendar days)
 ```
 
 `5h demand` summarizes active days' busiest 5-hour stretches over the last 30 days. `high` is the conservative high-use mark; `peak` is the biggest observed window.
-All counts come from local Pi session files. All-time totals may include inactive branches.
+Footer day counts use your computer's local calendar day. UTC session filenames do not define "today".
+All counts come from local Pi session files. All-time totals may include inactive tree paths.
 
 ## Data
 

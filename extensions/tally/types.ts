@@ -49,11 +49,12 @@ export interface FiveHourDemandStats {
 
 export interface DetailSnapshot {
   activeModel?: string;
-  activeBranchPrompts: number;
+  activeTreePathPrompts: number;
   todayPrompts: number;
   hourlyRate: string;
   fiveHourDemand: FiveHourDemandStats;
   activeDayAverage: number;
+  dailyHigh: number;
   weeklyAverage: number;
   monthlyAverage: number;
   allTimePrompts: number;

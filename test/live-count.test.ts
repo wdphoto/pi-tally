@@ -6,7 +6,7 @@ import { join } from "node:path";
 import piTally from "../extensions/tally/index.ts";
 import { loadStore } from "../extensions/tally/storage.ts";
 
-function makeCtx(agentDir: string) {
+function makeCtx(agentDir: string, entries: unknown[] = [], treePath: unknown[] = entries) {
   let status: string | undefined;
   const notifications: string[] = [];
   return {
@@ -29,10 +29,19 @@ function makeCtx(agentDir: string) {
       sessionManager: {
         getSessionFile: () => join(agentDir, "sessions", "current.jsonl"),
         getSessionId: () => "current-session",
-        getEntries: () => [],
-        getBranch: () => [],
+        getEntries: () => entries,
+        getBranch: () => treePath,
       },
     },
+  };
+}
+
+function userEntry(id: string, timestamp: number): unknown {
+  return {
+    type: "message",
+    id,
+    timestamp,
+    message: { role: "user", content: id, timestamp },
   };
 }
 
@@ -55,6 +64,34 @@ test("message_end counts the pending user message before Pi persists it", async 
     await handlers.get("message_end")?.({
       message: { role: "user", content: "hi", timestamp: noonToday },
     }, fixture.ctx);
+
+    assert.equal(fixture.status, "1/1/1");
+  } finally {
+    if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+  }
+});
+
+test("footer tree path count is scoped to the local computer day", async () => {
+  const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+  const agentDir = join(tmpdir(), `pi-tally-local-day-${process.pid}-${Date.now()}`);
+  await mkdir(join(agentDir, "sessions"), { recursive: true });
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  try {
+    const handlers = new Map<string, (event: any, ctx: any) => Promise<void>>();
+    piTally({
+      on: (event: string, handler: (event: any, ctx: any) => Promise<void>) => handlers.set(event, handler),
+      registerCommand: () => undefined,
+    } as any);
+
+    const now = new Date();
+    const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
+    const yesterdayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12).getTime();
+    const entries = [userEntry("yesterday", yesterdayNoon), userEntry("today", todayNoon)];
+    const fixture = makeCtx(agentDir, entries);
+
+    await handlers.get("session_start")?.({ reason: "startup" }, fixture.ctx);
 
     assert.equal(fixture.status, "1/1/1");
   } finally {

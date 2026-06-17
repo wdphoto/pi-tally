@@ -1,6 +1,7 @@
 import {
   activeDayAverage,
   activeDayCounts,
+  dailyHigh,
   daysBetween,
   fiveHourDemand,
   rollingAverage,
@@ -16,8 +17,8 @@ export function compactNumber(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : String(value);
 }
 
-export function footerText(activeBranchPrompts: number, store: TallyStore, arrow = "", now = new Date()): string {
-  return `${compactNumber(activeBranchPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
+export function footerText(activeTreePathTodayPrompts: number, store: TallyStore, arrow = "", now = new Date()): string {
+  return `${compactNumber(activeTreePathTodayPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
 }
 
 export function modelChoiceLabel(model: unknown): string | undefined {
@@ -29,15 +30,16 @@ export function modelChoiceLabel(model: unknown): string | undefined {
   return provider ? `${provider}/${id}` : id;
 }
 
-export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: number, now = new Date(), activeModel?: string): DetailSnapshot {
+export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): DetailSnapshot {
   const today = todayStr(now);
   return {
     ...(activeModel ? { activeModel } : {}),
-    activeBranchPrompts,
+    activeTreePathPrompts,
     todayPrompts: todayPrompts(store, now),
     hourlyRate: todayHourlyRate(store, now),
     fiveHourDemand: fiveHourDemand(store, now),
     activeDayAverage: activeDayAverage(store, now),
+    dailyHigh: dailyHigh(store),
     weeklyAverage: rollingAverage(store, 7, now),
     monthlyAverage: rollingAverage(store, 30, now),
     allTimePrompts: totalPrompts(store),
@@ -48,8 +50,8 @@ export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: numb
   };
 }
 
-export function detailLines(store: TallyStore, activeBranchPrompts: number, now = new Date(), activeModel?: string): string[] {
-  const s = buildDetailSnapshot(store, activeBranchPrompts, now, activeModel);
+export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): string[] {
+  const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel);
   const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate}/hr)` : "";
   return [
     "pi-tally",
@@ -58,8 +60,9 @@ export function detailLines(store: TallyStore, activeBranchPrompts: number, now 
     `Active days    ${compactNumber(s.fiveHourDemand.activeDays)} in last ${s.fiveHourDemand.lookbackDays}d`,
     ...(s.activeModel ? [`Model          ${s.activeModel}`] : []),
     `Today          ${compactNumber(s.todayPrompts)} so far${hourlySuffix}`,
-    `This branch    ${compactNumber(s.activeBranchPrompts)}`,
+    `Tree path      ${compactNumber(s.activeTreePathPrompts)}`,
     `Daily avg      ${compactNumber(s.activeDayAverage)}/day on active days`,
+    `Daily high     ${compactNumber(s.dailyHigh)}`,
     `7d avg         ${compactNumber(s.weeklyAverage)}/day on active days`,
     `30d avg        ${compactNumber(s.monthlyAverage)}/day on active days`,
     `All time       ${compactNumber(s.allTimePrompts)} across ${compactNumber(s.totalSessions)} sessions`,

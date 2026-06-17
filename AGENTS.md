@@ -87,7 +87,7 @@ After installing/reloading Pi:
 Footer format:
 
 ```text
-active-branch/today/active-day-average↑
+tree-path-today/today/active-day-average↑
 ```
 
 Example:
@@ -96,19 +96,26 @@ Example:
 5/52/84↑
 ```
 
+- `tree-path-today` is user prompts on the current Pi tree path for the computer's local calendar day.
+- `today` is all indexed/live user prompts for the computer's local calendar day.
+- UTC session filenames are storage details; do not use them to decide user-facing days.
+- `/tally` shows `Tree path` as the full active tree path total, including prompts from previous local days.
+
 Do not add separators like trailing pipes. Pi composes extension statuses itself.
 
 Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tally footer off`. This should persist locally and not require `/reload`.
 
-## Stats notes
+## Plan and stats notes
 
+- Keep `PLAN.md` short and user/product focused; do not turn it into an agent scratchpad.
 - 5-hour demand stats are for GPT plan selection.
 - Default 5-hour demand lookback should be 30 days for now; all-indexed history may come later, but only if calculation remains bounded/incremental.
 - For large histories, prefer persisted per-day/window summaries over recomputing every prompt on each `/tally` display.
 - Count user messages only for now; no model-specific usage tracking yet.
 - `/tally run` should remain a one-time/backfill command. Normal future prompts should update live without asking users to rerun it.
-- Future question for user: daily average is intentionally simple active-day arithmetic mean; ask later whether to add a plain `Daily high` line if the average feels misleading.
-- Future version idea: model usage trends. If revisited, prefer attributing user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
+- `today` means the computer's local calendar day. Do not switch it to UTC or rolling 24h unless the user explicitly asks.
+- Show a plain `Daily high` line in `/tally` alongside active-day average.
+- Current model display is not model usage tracking. Future model usage trends should attribute user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
 
 ## Storage
 

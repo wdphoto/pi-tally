@@ -177,6 +177,10 @@ export function activeDayAverage(store: TallyStore, now = new Date()): number {
   return Math.round(total / days);
 }
 
+export function dailyHigh(store: Pick<TallyStore, "daily">): number {
+  return Math.max(0, ...Object.values(store.daily));
+}
+
 export function rollingAverage(store: TallyStore, windowDays: number, now = new Date()): number {
   return avgCounts(activeDayCounts(store, windowDays, now));
 }

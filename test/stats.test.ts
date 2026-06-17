@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { detailLines, footerText, modelChoiceLabel } from "../extensions/tally/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, dailyHigh, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
@@ -52,6 +52,8 @@ test("activeDayAverage ignores low/noise days when active days exist", () => {
   }, fixedNow);
 
   assert.equal(activeDayAverage(store, fixedNow), 20);
+  assert.equal(dailyHigh(store), 20);
+  assert.ok(detailLines(store, 3, fixedNow).includes("Daily high     20"));
 });
 
 test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", () => {

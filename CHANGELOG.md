@@ -4,7 +4,13 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.5 - 2026-06-17
+
 - Added the current model to `/tally` output when Pi exposes it.
+- Changed the compact footer's tree-path count to use the computer's local calendar day.
+- Renamed user-facing active branch wording to tree path.
+- Added a `Daily high` line to `/tally`.
+- Documented local-day footer behavior and product decisions.
 - Made the Pi package manifest point explicitly at the tally extension entry file.
 - Simplified README intro wording.
 

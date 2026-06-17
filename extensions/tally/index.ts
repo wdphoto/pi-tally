@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { COMMAND_NAME, STATUS_KEY, resolveTallyPaths } from "./config.ts";
 import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts";
 import { loadStore, saveStoreAtomic } from "./storage.ts";
-import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, trendArrowForStore } from "./stats.ts";
+import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, todayStr, trendArrowForStore } from "./stats.ts";
 import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
 import { detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
 
@@ -62,12 +62,33 @@ async function currentSessionRecordWithStat(sessionManager: any): Promise<FileRe
   }
 }
 
-function activeBranchPromptCount(sessionManager: any): number {
+function activeTreePathPromptCount(sessionManager: any): number {
   try {
     return countUserMessages(sessionManager.getBranch?.() ?? []);
   } catch {
     return 0;
   }
+}
+
+function activeTreePathPromptCountForDate(sessionManager: any, date: string): number {
+  try {
+    let count = 0;
+    for (const entry of sessionManager.getBranch?.() ?? []) {
+      if (promptFactFromEntry(entry)?.date === date) count++;
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+function pendingUserMessageCountForDate(message: unknown, date: string, now = new Date()): number {
+  const fact = promptFactFromEntry({
+    type: "message",
+    timestamp: (message as { timestamp?: unknown })?.timestamp,
+    message,
+  }, now.getTime());
+  return fact?.date === date ? 1 : 0;
 }
 
 function preserveKnownFileStats(store: TallyStore, record: FileRecord): FileRecord {
@@ -117,7 +138,8 @@ async function showLines(ctx: any, lines: string[]): Promise<void> {
 export default function piTally(pi: ExtensionAPI) {
   const paths: TallyPaths = resolveTallyPaths();
   let store: TallyStore | undefined;
-  let activeBranch = 0;
+  let activeTreePath = 0;
+  let activeTreePathToday = 0;
   let arrow = "";
   let pendingSave: Promise<void> = Promise.resolve();
 
@@ -135,7 +157,8 @@ export default function piTally(pi: ExtensionAPI) {
     store = await loadStore(paths.storeFile);
     store = await refreshKnownChangedFiles(store);
     store = await reconcileCurrentSession(store, ctx.sessionManager);
-    activeBranch = activeBranchPromptCount(ctx.sessionManager);
+    activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+    activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
     arrow = trendArrowForStore(store);
     setStatus(ctx);
     queueSave(store);
@@ -147,7 +170,7 @@ export default function piTally(pi: ExtensionAPI) {
       ctx.ui.setStatus(STATUS_KEY, undefined);
       return;
     }
-    ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", footerText(activeBranch, store, arrow)));
+    ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", footerText(activeTreePathToday, store, arrow)));
   }
 
   pi.registerCommand(COMMAND_NAME, {
@@ -159,6 +182,8 @@ export default function piTally(pi: ExtensionAPI) {
       if (command === "footer" || command === "footer on" || command === "footer off") {
         const enabled = command === "footer" ? store.footerEnabled === false : command === "footer on";
         store = { ...store, footerEnabled: enabled, updatedAt: new Date().toISOString() };
+        activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+        activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
         await saveNow(store);
         setStatus(ctx);
         if (ctx.hasUI) ctx.ui.notify(`pi-tally: footer ${enabled ? "enabled" : "disabled"}`, "info");
@@ -170,13 +195,16 @@ export default function piTally(pi: ExtensionAPI) {
         const previousActiveDayAverage = store.previousActiveDayAverage ?? activeDayAverage(store);
         const result = await rebuildStoreFromSessions(paths.sessionsDir);
         store = await reconcileCurrentSession({ ...result.store, previousActiveDayAverage, footerEnabled: store.footerEnabled !== false }, ctx.sessionManager);
-        activeBranch = activeBranchPromptCount(ctx.sessionManager);
+        activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+        activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
         arrow = trendArrowForStore(store);
         await saveNow(store);
         setStatus(ctx);
         if (ctx.hasUI) ctx.ui.notify(`pi-tally: count complete (${result.skipped} skipped)`, "info");
       } else if (command === "status") {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
+        activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+        activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
         await saveNow(store);
         await showLines(ctx, statusLines(paths, store));
         setStatus(ctx);
@@ -185,13 +213,14 @@ export default function piTally(pi: ExtensionAPI) {
         if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally run, /tally status, /tally footer [on|off]", "warning");
       } else {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
-        activeBranch = activeBranchPromptCount(ctx.sessionManager);
+        activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+        activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
         arrow = trendArrowForStore(store);
         await saveNow(store);
         setStatus(ctx);
       }
 
-      await showLines(ctx, detailLines(store, activeBranch, new Date(), modelChoiceLabel(ctx.model)));
+      await showLines(ctx, detailLines(store, activeTreePath, new Date(), modelChoiceLabel(ctx.model)));
     },
   });
 
@@ -202,7 +231,10 @@ export default function piTally(pi: ExtensionAPI) {
   pi.on("message_end", async (event, ctx) => {
     if (event.message?.role !== "user") return;
     store ??= await loadStore(paths.storeFile);
-    activeBranch = activeBranchPromptCount(ctx.sessionManager) + 1;
+    const now = new Date();
+    const today = todayStr(now);
+    activeTreePath = activeTreePathPromptCount(ctx.sessionManager) + 1;
+    activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, today) + pendingUserMessageCountForDate(event.message, today, now);
     store = reconcilePendingUserMessage(store, ctx.sessionManager, event.message);
     arrow = trendArrowForStore(store);
     setStatus(ctx);
@@ -211,7 +243,8 @@ export default function piTally(pi: ExtensionAPI) {
 
   pi.on("session_tree", async (_event, ctx) => {
     store ??= await loadStore(paths.storeFile);
-    activeBranch = activeBranchPromptCount(ctx.sessionManager);
+    activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+    activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
     setStatus(ctx);
   });
 
