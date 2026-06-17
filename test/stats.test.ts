@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { footerText } from "../extensions/tally/ui.ts";
+import { detailLines, footerText, modelChoiceLabel } from "../extensions/tally/ui.ts";
 import { activeDayAverage, bucketFromTimestamp, createEmptyStore, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
@@ -85,6 +85,17 @@ test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", ()
     activeDays: 1,
     lookbackDays: 30,
   });
+});
+
+test("modelChoiceLabel formats provider and model id", () => {
+  assert.equal(modelChoiceLabel({ provider: "deepseek", id: "deepseek-v4-pro" }), "deepseek/deepseek-v4-pro");
+  assert.equal(modelChoiceLabel({ id: "deepseek-v4-pro" }), "deepseek-v4-pro");
+  assert.equal(modelChoiceLabel(undefined), undefined);
+});
+
+test("detailLines include active model when available", () => {
+  const store = createEmptyStore(fixedNow);
+  assert.ok(detailLines(store, 0, fixedNow, "deepseek/deepseek-v4-pro").includes("Model          deepseek/deepseek-v4-pro"));
 });
 
 test("footerText formats compact counters", () => {

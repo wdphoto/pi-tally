@@ -108,6 +108,7 @@ Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tall
 - Count user messages only for now; no model-specific usage tracking yet.
 - `/tally run` should remain a one-time/backfill command. Normal future prompts should update live without asking users to rerun it.
 - Future question for user: daily average is intentionally simple active-day arithmetic mean; ask later whether to add a plain `Daily high` line if the average feels misleading.
+- Future version idea: model usage trends. If revisited, prefer attributing user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
 
 ## Storage
 

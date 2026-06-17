@@ -4,6 +4,9 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+- Added the current model to `/tally` output when Pi exposes it.
+- Simplified README intro wording.
+
 ## 0.0.4 - 2026-06-16
 
 - Added `/tally footer`, `/tally footer on`, and `/tally footer off` to toggle the footer tally locally.

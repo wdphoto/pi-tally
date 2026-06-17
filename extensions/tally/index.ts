@@ -5,7 +5,7 @@ import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts
 import { loadStore, saveStoreAtomic } from "./storage.ts";
 import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, trendArrowForStore } from "./stats.ts";
 import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
-import { detailLines, footerText, statusLines, truncatePlainLine } from "./ui.ts";
+import { detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
 
 function currentSessionRecord(sessionManager: any): FileRecord | undefined {
   const sessionFile = sessionManager.getSessionFile?.();
@@ -191,7 +191,7 @@ export default function piTally(pi: ExtensionAPI) {
         setStatus(ctx);
       }
 
-      await showLines(ctx, detailLines(store, activeBranch));
+      await showLines(ctx, detailLines(store, activeBranch, new Date(), modelChoiceLabel(ctx.model)));
     },
   });
 

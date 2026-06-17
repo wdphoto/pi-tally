@@ -48,6 +48,7 @@ export interface FiveHourDemandStats {
 }
 
 export interface DetailSnapshot {
+  activeModel?: string;
   activeBranchPrompts: number;
   todayPrompts: number;
   hourlyRate: string;

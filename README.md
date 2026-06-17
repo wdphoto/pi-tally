@@ -2,7 +2,7 @@
 
 A small local prompt counter for Pi.
 
-It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only. No network calls, uploads, or analytics.
+It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only.
 
 Footer example:
 
@@ -63,6 +63,7 @@ pi-tally
 ────────
 5h demand      avg 64 / high 91 / peak 121
 Active days    18 in last 30d
+Model          deepseek/deepseek-v4-pro
 Today          52 so far (4.1/hr)
 This branch    5
 Daily avg      84/day on active days

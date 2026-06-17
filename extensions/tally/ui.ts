@@ -20,9 +20,19 @@ export function footerText(activeBranchPrompts: number, store: TallyStore, arrow
   return `${compactNumber(activeBranchPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
 }
 
-export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: number, now = new Date()): DetailSnapshot {
+export function modelChoiceLabel(model: unknown): string | undefined {
+  if (!model || typeof model !== "object") return undefined;
+  const m = model as { provider?: unknown; id?: unknown; modelId?: unknown; name?: unknown };
+  const provider = typeof m.provider === "string" ? m.provider : undefined;
+  const id = typeof m.id === "string" ? m.id : typeof m.modelId === "string" ? m.modelId : typeof m.name === "string" ? m.name : undefined;
+  if (!id) return undefined;
+  return provider ? `${provider}/${id}` : id;
+}
+
+export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: number, now = new Date(), activeModel?: string): DetailSnapshot {
   const today = todayStr(now);
   return {
+    ...(activeModel ? { activeModel } : {}),
     activeBranchPrompts,
     todayPrompts: todayPrompts(store, now),
     hourlyRate: todayHourlyRate(store, now),
@@ -38,14 +48,15 @@ export function buildDetailSnapshot(store: TallyStore, activeBranchPrompts: numb
   };
 }
 
-export function detailLines(store: TallyStore, activeBranchPrompts: number, now = new Date()): string[] {
-  const s = buildDetailSnapshot(store, activeBranchPrompts, now);
+export function detailLines(store: TallyStore, activeBranchPrompts: number, now = new Date(), activeModel?: string): string[] {
+  const s = buildDetailSnapshot(store, activeBranchPrompts, now, activeModel);
   const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate}/hr)` : "";
   return [
     "pi-tally",
     "────────",
     `5h demand      avg ${compactNumber(s.fiveHourDemand.average)} / high ${compactNumber(s.fiveHourDemand.high)} / peak ${compactNumber(s.fiveHourDemand.peak)}`,
     `Active days    ${compactNumber(s.fiveHourDemand.activeDays)} in last ${s.fiveHourDemand.lookbackDays}d`,
+    ...(s.activeModel ? [`Model          ${s.activeModel}`] : []),
     `Today          ${compactNumber(s.todayPrompts)} so far${hourlySuffix}`,
     `This branch    ${compactNumber(s.activeBranchPrompts)}`,
     `Daily avg      ${compactNumber(s.activeDayAverage)}/day on active days`,
