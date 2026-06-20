@@ -62,12 +62,6 @@ Total:         5.6k across 350 sessions
 Pi Crumbs:     899,934 characters sent to Pi.
 ```
 
-`Daily: avg` is your all-time active-day average. The `24h`, `7d`, and `30d` numbers are compact recent activity summaries; 7d/30d arrows compare against the previous matching window.
-`5h window` summarizes active days' busiest 5-hour stretches over the last 30 days. `high` is the conservative high-use mark; `peak` is the biggest observed window.
-`Pi Crumbs` rotates through small local facts such as submitted characters, favorite model, prompt length, streaks, busiest days, and late-night usage. Use `/tally all` to see every available crumb.
-Footer day counts use your computer's local calendar day. UTC session filenames do not define "today".
-All counts come from local Pi session files. All-time totals may include inactive tree paths.
-
 ## Data
 
 The counter is stored locally at:
