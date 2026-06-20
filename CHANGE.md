@@ -4,6 +4,13 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.7 - 2026-06-20
+
+- Added a README screenshot of the `/tally` output.
+- Polished and shortened the README setup and command guidance.
+- Moved first-run `/tally run` and footer-toggle notes closer to the top of the README.
+- Ignored local Pi construct metadata so fetched local packages do not dirty git status.
+
 ## 0.0.6 - 2026-06-20
 
 - Cleaned up `/tally` output: removed the header, moved `Since` to the top, renamed tree-path display to `Tree`, and moved Pi Crumbs to the bottom.

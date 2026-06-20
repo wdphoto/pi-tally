@@ -1,6 +1,14 @@
 # pi-tally
 
-A small local user prompt counter for Pi. It adds a compact tally to the footer and a `/tally` command. 
+![pi-tally screenshot](https://raw.githubusercontent.com/wdphoto/pi-tally/main/tally.png)
+
+A small local user prompt counter for Pi. It adds a compact tally to the footer and a `/tally` command.
+
+Use `/tally run` after installing to count your session history.
+
+Hide or restore the footer with `/tally footer` to toggle.
+
+That's pretty much it. Definitely a work in progress.
 
 Footer example:
 ```text
@@ -11,12 +19,6 @@ That means:
 - `52` prompts today overall
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
-
-Use `/tally run` once after installing to count your session history.
-
-Hide or restore the footer with `/tally footer` to toggle.
-
-That's pretty much it.
 
 ## Install
 pi-tally is intended to be installed globally for your Pi user, not per project. I haven't even tested it any other way.

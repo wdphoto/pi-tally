@@ -20,6 +20,8 @@ Thumbs.db
 
 # Pi local runtime/cache/state
 # Do not blanket-ignore .pi/: fixtures/examples may intentionally commit Pi config.
+.pi/settings.json
+.pi/construct.json
 .pi/npm/
 .pi/git/
 .pi/sessions/
