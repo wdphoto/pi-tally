@@ -12,7 +12,7 @@ That means:
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
 
-Install Tally starts counting. Use `/tally run` once after installing if you want old sessions included.
+Use `/tally run` once after installing to count your session history.
 
 Hide or restore the footer with `/tally footer` to toggle.
 
