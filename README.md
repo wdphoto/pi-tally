@@ -1,27 +1,25 @@
 # pi-tally
 
-A small local prompt counter for Pi.
-
-It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only, with a small Pi Crumbs fun fact in the detailed report.
+A small local user prompt counter for Pi. It adds a compact tally to the footer and a `/tally` command. 
 
 Footer example:
-
 ```text
 5/52/84↑
 ```
-
 That means:
-
 - `5` prompts today on the active Pi tree path
 - `52` prompts today overall
 - `84` average prompts on active days
 - `↑` or `↓` trend once there is enough history
 
-Hide or restore the footer with `/tally footer off`, `/tally footer on`, or `/tally footer` to toggle.
+Install Tally starts counting. Use `/tally run` once after installing if you want old sessions included.
+
+Hide or restore the footer with `/tally footer` to toggle.
+
+That's pretty much it.
 
 ## Install
-
-pi-tally is intended to be installed globally for your Pi user, not per project.
+pi-tally is intended to be installed globally for your Pi user, not per project. I haven't even tested it any other way.
 
 From npm:
 
@@ -40,22 +38,12 @@ Restart Pi after installing.
 ## Commands
 
 ```text
-/tally              show your prompt stats
-/tally all          show stats with all Pi Crumbs
-/tally run          count existing Pi session history
-/tally status       show storage/index info
+/tally run          count your Pi history
+/tally              show your stats
+/tally all          show verbose stat output
 /tally footer       toggle footer tally on/off
-/tally footer on    show footer tally
-/tally footer off   hide footer tally
+/tally status       show storage/index info
 ```
-
-Run this once after installing if you want old sessions included:
-
-```text
-/tally run
-```
-
-After that, pi-tally updates live as you use Pi. Run `/tally run` again only for missed/imported sessions or a clean rebuild.
 
 ## Notes
 
