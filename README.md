@@ -2,7 +2,7 @@
 
 A small local prompt counter for Pi.
 
-It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only.
+It adds a compact footer tally and a `/tally` command. It counts your local Pi user messages only, with a small Pi Crumbs fun fact in the detailed report.
 
 Footer example:
 
@@ -20,6 +20,8 @@ That means:
 Hide or restore the footer with `/tally footer off`, `/tally footer on`, or `/tally footer` to toggle.
 
 ## Install
+
+pi-tally is intended to be installed globally for your Pi user, not per project.
 
 From npm:
 
@@ -39,6 +41,7 @@ Restart Pi after installing.
 
 ```text
 /tally              show your prompt stats
+/tally all          show stats with all Pi Crumbs
 /tally run          count existing Pi session history
 /tally status       show storage/index info
 /tally footer       toggle footer tally on/off
@@ -59,22 +62,21 @@ After that, pi-tally updates live as you use Pi. Run `/tally run` again only for
 A `/tally` report looks roughly like this:
 
 ```text
-pi-tally
-────────
-5h demand      avg 64 / high 91 / peak 121
-Active days    18 in last 30d
-Model          deepseek/deepseek-v4-pro
-Today          52 so far (4.1/hr)
-Tree path      5
-Daily avg      84/day on active days
-Daily high     221
-7d avg         96/day on active days
-30d avg        88/day on active days
-All time       5.6k across 350 sessions
-Indexed since  2026-03-07 (60 active / 101 calendar days)
+Since:         2026-03-07 (60 active / 101 calendar days)
+Tree:          5
+Today:         52 so far (4.1/hr)
+Daily:         avg 84   24h 52   7d 96↑   30d 88↓
+5h window:     avg 64   high 91   peak 121
+Streak:        5d current / 12d record
+Record:        221 on 2026-06-14
+Total:         5.6k across 350 sessions
+
+Pi Crumbs:     899,934 characters sent to Pi.
 ```
 
-`5h demand` summarizes active days' busiest 5-hour stretches over the last 30 days. `high` is the conservative high-use mark; `peak` is the biggest observed window.
+`Daily: avg` is your all-time active-day average. The `24h`, `7d`, and `30d` numbers are compact recent activity summaries; 7d/30d arrows compare against the previous matching window.
+`5h window` summarizes active days' busiest 5-hour stretches over the last 30 days. `high` is the conservative high-use mark; `peak` is the biggest observed window.
+`Pi Crumbs` rotates through small local facts such as submitted characters, favorite model, prompt length, streaks, busiest days, and late-night usage. Use `/tally all` to see every available crumb.
 Footer day counts use your computer's local calendar day. UTC session filenames do not define "today".
 All counts come from local Pi session files. All-time totals may include inactive tree paths.
 

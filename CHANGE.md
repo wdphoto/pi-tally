@@ -4,6 +4,14 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.6 - 2026-06-20
+
+- Cleaned up `/tally` output: removed the header, moved `Since` to the top, renamed tree-path display to `Tree`, and moved Pi Crumbs to the bottom.
+- Replaced separate 7-day and 30-day average lines with one compact `Daily` line showing all-time active-day average plus 24h, 7d, and 30d recent activity.
+- Added all-time `Record` and current/record `Streak` lines to the main `/tally` output.
+- Added `/tally all` for normal stats plus a full list of available Pi Crumbs.
+- Added Pi Crumbs, a rotating `/tally` fun-fact line with submitted characters, favorite model, prompt length, streak, busiest-day, and late-night usage facts.
+
 ## 0.0.5 - 2026-06-17
 
 - Added the current model to `/tally` output when Pi exposes it.

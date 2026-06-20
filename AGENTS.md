@@ -7,7 +7,8 @@ Guidance for future coding agents working on `pi-tally`.
 `pi-tally` is a small Pi extension that counts local Pi user prompts and shows:
 
 - compact footer status
-- `/tally` detailed stats
+- `/tally` compact detailed stats
+- `/tally all` stats plus every Pi Crumb
 - `/tally run` history indexing
 - `/tally status` storage/index info
 
@@ -52,7 +53,7 @@ npm run pack:dry
 
 Keep GitHub and npm releases in sync:
 
-- Update `CHANGELOG.md` before commits/pushes, and check it again before release.
+- Update `CHANGE.md` before commits/pushes, and check it again before release.
 - Bump `package.json` and `package-lock.json` together.
 - Run `npm run check`, `npm test`, and `npm run pack:dry` before release.
 - Commit the version bump and code changes.
@@ -72,6 +73,7 @@ After installing/reloading Pi:
 ```text
 /tally run
 /tally
+/tally all
 /tally status
 ```
 
@@ -99,23 +101,26 @@ Example:
 - `tree-path-today` is user prompts on the current Pi tree path for the computer's local calendar day.
 - `today` is all indexed/live user prompts for the computer's local calendar day.
 - UTC session filenames are storage details; do not use them to decide user-facing days.
-- `/tally` shows `Tree path` as the full active tree path total, including prompts from previous local days.
+- `/tally` shows `Tree` as the full active tree path total, including prompts from previous local days.
 
 Do not add separators like trailing pipes. Pi composes extension statuses itself.
 
 Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tally footer off`. This should persist locally and not require `/reload`.
 
-## Plan and stats notes
+## Map and stats notes
 
-- Keep `PLAN.md` short and user/product focused; do not turn it into an agent scratchpad.
-- 5-hour demand stats are for GPT plan selection.
-- Default 5-hour demand lookback should be 30 days for now; all-indexed history may come later, but only if calculation remains bounded/incremental.
+- Keep `MAP.md` short and user/product focused; do not turn it into an agent scratchpad.
+- Keep `TODO.md` for reminders, questions, and research notes.
+- Keep `CHANGE.md` as the changelog.
+- 5-hour window stats are for GPT plan selection.
+- Default 5-hour lookback should be 30 days for now; all-indexed history may come later, but only if calculation remains bounded/incremental.
 - For large histories, prefer persisted per-day/window summaries over recomputing every prompt on each `/tally` display.
-- Count user messages only for now; no model-specific usage tracking yet.
+- Count user messages only for now; no real model-specific usage tracking yet.
 - `/tally run` should remain a one-time/backfill command. Normal future prompts should update live without asking users to rerun it.
 - `today` means the computer's local calendar day. Do not switch it to UTC or rolling 24h unless the user explicitly asks.
-- Show a plain `Daily high` line in `/tally` alongside active-day average.
-- Current model display is not model usage tracking. Future model usage trends should attribute user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
+- `/tally` should stay compact: since/tree/today/daily/5h window/streak/record/total plus one Pi Crumb.
+- `/tally all` should show the same stat block plus every available Pi Crumb, without a repeated details section.
+- Favorite model is currently a playful crumb from Pi's active model label. Future real favorite-model trends should attribute user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
 
 ## Storage
 

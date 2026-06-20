@@ -32,7 +32,28 @@ test("migrateStore rebuilds aggregates from file records", () => {
   assert.equal(store.daily["2026-06-15"], 1);
   assert.equal(store.hourly["2026-06-15 09"], 1);
   assert.equal(store.sessions.s1, 1);
+  assert.equal(store.crumbs.totalChars, 0);
   assert.equal(store.footerEnabled, true);
+});
+
+test("migrateStore preserves prompt character crumbs", () => {
+  const store = migrateStore({
+    version: 1,
+    updatedAt: fixedNow.toISOString(),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 10,
+        prompts: [{ timestamp: 1, date: "2026-06-15", hour: "09", chars: 12 }],
+      },
+    },
+  }, fixedNow);
+
+  assert.equal(store.crumbs.totalChars, 12);
+  assert.equal(store.crumbs.longestPromptChars, 12);
+  assert.equal(store.crumbs.dailyChars["2026-06-15"], 12);
 });
 
 test("migrateStore preserves disabled footer setting", () => {

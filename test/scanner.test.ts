@@ -27,6 +27,8 @@ test("parseSessionJsonl counts only user message entries and ignores malformed l
   assert.deepEqual(record.prompts.map((p) => p.id), ["u1", "u2"]);
   assert.equal(record.prompts[0]?.date, "2026-06-15");
   assert.equal(record.prompts[1]?.date, "2026-06-15");
+  assert.equal(record.prompts[0]?.chars, 2);
+  assert.equal(record.prompts[1]?.chars, 5);
 });
 
 test("scanAllSessions walks nested Pi session directories", async () => {

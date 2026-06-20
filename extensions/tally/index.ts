@@ -5,7 +5,7 @@ import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts
 import { loadStore, saveStoreAtomic } from "./storage.ts";
 import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, todayStr, trendArrowForStore } from "./stats.ts";
 import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
-import { detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
+import { allDetailLines, detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
 
 function currentSessionRecord(sessionManager: any): FileRecord | undefined {
   const sessionFile = sessionManager.getSessionFile?.();
@@ -114,9 +114,9 @@ async function showLines(ctx: any, lines: string[]): Promise<void> {
     await ctx.ui.custom((_tui: unknown, theme: any, _kb: unknown, done: (value?: unknown) => void) => {
       return {
         render(width: number): string[] {
-          return lines.map((line, i) => {
+          return lines.map((line) => {
             const plain = truncatePlainLine(line, Math.min(width, 88));
-            if (i < 2) return theme.fg("accent", plain);
+            if (line.startsWith("Since:") || line.startsWith("Pi Crumbs")) return theme.fg("accent", plain);
             if (line.startsWith("Local") || line.includes("only counts")) return theme.fg("dim", plain);
             return plain;
           });
@@ -209,8 +209,17 @@ export default function piTally(pi: ExtensionAPI) {
         await showLines(ctx, statusLines(paths, store));
         setStatus(ctx);
         return;
+      } else if (command === "all") {
+        store = await reconcileCurrentSession(store, ctx.sessionManager);
+        activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
+        activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
+        arrow = trendArrowForStore(store);
+        await saveNow(store);
+        setStatus(ctx);
+        await showLines(ctx, allDetailLines(store, activeTreePath, new Date(), modelChoiceLabel(ctx.model)));
+        return;
       } else if (command.length > 0) {
-        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally run, /tally status, /tally footer [on|off]", "warning");
+        if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally all, /tally run, /tally status, /tally footer [on|off]", "warning");
       } else {
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         activeTreePath = activeTreePathPromptCount(ctx.sessionManager);

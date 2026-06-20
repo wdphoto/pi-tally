@@ -1,5 +1,5 @@
 import { ACTIVE_DAY_MIN_PROMPTS, FIVE_HOUR_DEMAND_LOOKBACK_DAYS, FIVE_HOUR_WINDOW_HOURS } from "./config.ts";
-import { STORE_VERSION, type FileRecord, type FiveHourDemandStats, type PromptFact, type TallyStore } from "./types.ts";
+import { STORE_VERSION, type FileRecord, type FiveHourDemandStats, type PiCrumbs, type PromptFact, type TallyStore } from "./types.ts";
 
 export function createEmptyStore(now = new Date()): TallyStore {
   return {
@@ -8,9 +8,53 @@ export function createEmptyStore(now = new Date()): TallyStore {
     daily: {},
     hourly: {},
     sessions: {},
+    crumbs: emptyPiCrumbs(),
     footerEnabled: true,
     updatedAt: now.toISOString(),
   };
+}
+
+function emptyPiCrumbs(): PiCrumbs {
+  return {
+    totalChars: 0,
+    dailyChars: {},
+    longestPromptChars: 0,
+  };
+}
+
+function charCount(text: string): number {
+  return Array.from(text).length;
+}
+
+export function userMessageCharCount(message: unknown, depth = 0): number {
+  if (depth > 4) return 0;
+  if (typeof message === "string") return charCount(message);
+  if (Array.isArray(message)) return message.reduce((sum, part) => sum + userMessageCharCount(part, depth + 1), 0);
+  if (!message || typeof message !== "object") return 0;
+
+  const m = message as { content?: unknown; text?: unknown; value?: unknown; type?: unknown };
+  if (typeof m.content !== "undefined") return userMessageCharCount(m.content, depth + 1);
+  if (typeof m.text === "string") return charCount(m.text);
+  if ((m.type === "text" || m.type === "input_text") && typeof m.value === "string") return charCount(m.value);
+  return 0;
+}
+
+function promptChars(prompt: PromptFact): number {
+  return typeof prompt.chars === "number" && Number.isFinite(prompt.chars) && prompt.chars > 0 ? Math.floor(prompt.chars) : 0;
+}
+
+function computePiCrumbs(files: Record<string, FileRecord>): PiCrumbs {
+  const crumbs = emptyPiCrumbs();
+  for (const record of Object.values(files)) {
+    for (const prompt of record.prompts) {
+      const chars = promptChars(prompt);
+      if (chars <= 0) continue;
+      crumbs.totalChars += chars;
+      crumbs.dailyChars[prompt.date] = (crumbs.dailyChars[prompt.date] ?? 0) + chars;
+      crumbs.longestPromptChars = Math.max(crumbs.longestPromptChars, chars);
+    }
+  }
+  return crumbs;
 }
 
 export function bucketFromTimestamp(ts: unknown, fallback = Date.now()): { timestamp: number; date: string; hour: string } {
@@ -47,6 +91,7 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
     daily: {},
     hourly: {},
     sessions: {},
+    crumbs: emptyPiCrumbs(),
     footerEnabled: store.footerEnabled !== false,
     updatedAt: now.toISOString(),
     ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),
@@ -57,6 +102,12 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
     for (const prompt of record.prompts) {
       next.daily[prompt.date] = (next.daily[prompt.date] ?? 0) + 1;
       next.hourly[`${prompt.date} ${prompt.hour}`] = (next.hourly[`${prompt.date} ${prompt.hour}`] ?? 0) + 1;
+      const chars = promptChars(prompt);
+      if (chars > 0) {
+        next.crumbs.totalChars += chars;
+        next.crumbs.dailyChars[prompt.date] = (next.crumbs.dailyChars[prompt.date] ?? 0) + chars;
+        next.crumbs.longestPromptChars = Math.max(next.crumbs.longestPromptChars, chars);
+      }
       if (!next.earliestDate || prompt.date < next.earliestDate) next.earliestDate = prompt.date;
     }
     if (record.earliestDate && (!next.earliestDate || record.earliestDate < next.earliestDate)) {
@@ -68,6 +119,12 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
 }
 
 function adjustCount(map: Record<string, number>, key: string, delta: number): void {
+  const next = (map[key] ?? 0) + delta;
+  if (next <= 0) delete map[key];
+  else map[key] = next;
+}
+
+function adjustValue(map: Record<string, number>, key: string, delta: number): void {
   const next = (map[key] ?? 0) + delta;
   if (next <= 0) delete map[key];
   else map[key] = next;
@@ -87,12 +144,23 @@ export function replaceFileRecordIncremental(store: TallyStore, record: FileReco
   const daily = { ...store.daily };
   const hourly = { ...store.hourly };
   const sessions = { ...store.sessions };
+  const dailyChars = { ...store.crumbs.dailyChars };
+  let totalChars = store.crumbs.totalChars;
+  let longestPrompt = store.crumbs.longestPromptChars;
+  let removedLongestPrompt = false;
+  let addedLongestPrompt = 0;
 
   if (previous) {
     adjustCount(sessions, previous.sessionId, -previous.prompts.length);
     for (const prompt of previous.prompts) {
       adjustCount(daily, prompt.date, -1);
       adjustCount(hourly, `${prompt.date} ${prompt.hour}`, -1);
+      const chars = promptChars(prompt);
+      if (chars > 0) {
+        totalChars -= chars;
+        adjustValue(dailyChars, prompt.date, -chars);
+        if (chars >= store.crumbs.longestPromptChars) removedLongestPrompt = true;
+      }
     }
   }
 
@@ -100,6 +168,17 @@ export function replaceFileRecordIncremental(store: TallyStore, record: FileReco
   for (const prompt of record.prompts) {
     adjustCount(daily, prompt.date, 1);
     adjustCount(hourly, `${prompt.date} ${prompt.hour}`, 1);
+    const chars = promptChars(prompt);
+    if (chars > 0) {
+      totalChars += chars;
+      adjustValue(dailyChars, prompt.date, chars);
+      addedLongestPrompt = Math.max(addedLongestPrompt, chars);
+      longestPrompt = Math.max(longestPrompt, chars);
+    }
+  }
+
+  if (removedLongestPrompt && addedLongestPrompt < store.crumbs.longestPromptChars) {
+    longestPrompt = computePiCrumbs(files).longestPromptChars;
   }
 
   let earliestDate: string | undefined;
@@ -114,6 +193,11 @@ export function replaceFileRecordIncremental(store: TallyStore, record: FileReco
     daily,
     hourly,
     sessions,
+    crumbs: {
+      totalChars: Math.max(0, totalChars),
+      dailyChars,
+      longestPromptChars: longestPrompt,
+    },
     footerEnabled: store.footerEnabled !== false,
     updatedAt: now.toISOString(),
     ...(earliestDate ? { earliestDate } : {}),
@@ -143,11 +227,13 @@ export function promptFactFromEntry(entry: unknown, fallback = Date.now()): Prom
   if (!isUserMessageEntry(entry)) return undefined;
   const e = entry as { id?: unknown; timestamp?: unknown; message?: { timestamp?: unknown } };
   const bucket = bucketFromTimestamp(e.message?.timestamp ?? e.timestamp, fallback);
+  const chars = userMessageCharCount(e.message);
   return {
     ...(typeof e.id === "string" ? { id: e.id } : {}),
     timestamp: bucket.timestamp,
     date: bucket.date,
     hour: bucket.hour,
+    ...(chars > 0 ? { chars } : {}),
   };
 }
 
@@ -185,8 +271,36 @@ export function rollingAverage(store: TallyStore, windowDays: number, now = new 
   return avgCounts(activeDayCounts(store, windowDays, now));
 }
 
+function activeDayCountsForOffsetWindow(store: Pick<TallyStore, "daily">, startOffsetDays: number, windowDays: number, now = new Date()): number[] {
+  const counts: number[] = [];
+  for (let i = startOffsetDays; i < startOffsetDays + windowDays; i++) {
+    const count = store.daily[nDaysAgo(i, now)] ?? 0;
+    if (count >= ACTIVE_DAY_MIN_PROMPTS) counts.push(count);
+  }
+  return counts;
+}
+
+export function rollingAverageTrendArrow(store: TallyStore, windowDays: number, now = new Date()): "" | "↑" | "↓" {
+  const current = avgCounts(activeDayCountsForOffsetWindow(store, 0, windowDays, now));
+  const previous = avgCounts(activeDayCountsForOffsetWindow(store, windowDays, windowDays, now));
+  if (current <= 0 || previous <= 0) return "";
+  return current >= previous ? "↑" : "↓";
+}
+
 export function todayPrompts(store: TallyStore, now = new Date()): number {
   return store.daily[todayStr(now)] ?? 0;
+}
+
+export function rollingPromptCount(store: TallyStore, hours: number, now = new Date()): number {
+  const end = now.getTime();
+  const start = end - Math.max(0, hours) * 60 * 60 * 1000;
+  let count = 0;
+  for (const record of Object.values(store.files)) {
+    for (const prompt of record.prompts) {
+      if (Number.isFinite(prompt.timestamp) && prompt.timestamp >= start && prompt.timestamp <= end) count++;
+    }
+  }
+  return count;
 }
 
 export function todayHourlyRate(store: TallyStore, now = new Date()): string {
@@ -264,6 +378,77 @@ export function totalPrompts(store: TallyStore): number {
 
 export function totalSessions(store: TallyStore): number {
   return Object.keys(store.sessions).length;
+}
+
+export function totalSubmittedChars(store: TallyStore): number {
+  return store.crumbs.totalChars;
+}
+
+export function averagePromptChars(store: TallyStore): number {
+  const prompts = totalPrompts(store);
+  return prompts > 0 ? Math.round(totalSubmittedChars(store) / prompts) : 0;
+}
+
+export function longestPromptChars(store: TallyStore): number {
+  return store.crumbs.longestPromptChars;
+}
+
+function dayNumber(date: string): number | undefined {
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+}
+
+function dateFromDayNumber(day: number): string {
+  const date = new Date(day * 86_400_000);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function currentStreakDays(store: Pick<TallyStore, "daily">, now = new Date()): number {
+  const today = dayNumber(todayStr(now));
+  if (today === undefined) return 0;
+
+  let streak = 0;
+  for (let day = today; day >= today - 3660; day--) {
+    if ((store.daily[dateFromDayNumber(day)] ?? 0) <= 0) break;
+    streak++;
+  }
+  return streak;
+}
+
+export function longestStreakDays(store: Pick<TallyStore, "daily">): number {
+  const days = Object.entries(store.daily)
+    .filter(([, count]) => count > 0)
+    .map(([date]) => dayNumber(date))
+    .filter((day): day is number => day !== undefined)
+    .sort((a, b) => a - b);
+
+  let longest = 0;
+  let current = 0;
+  let previous: number | undefined;
+  for (const day of days) {
+    current = previous !== undefined && day === previous + 1 ? current + 1 : 1;
+    longest = Math.max(longest, current);
+    previous = day;
+  }
+  return longest;
+}
+
+export function lateNightPrompts(store: Pick<TallyStore, "hourly">): number {
+  let count = 0;
+  for (const [bucket, prompts] of Object.entries(store.hourly)) {
+    const hour = Number(bucket.slice(-2));
+    if (Number.isFinite(hour) && (hour >= 23 || hour < 5)) count += prompts;
+  }
+  return count;
+}
+
+export function busiestDay(store: Pick<TallyStore, "daily">): { date: string; prompts: number } | undefined {
+  let best: { date: string; prompts: number } | undefined;
+  for (const [date, prompts] of Object.entries(store.daily)) {
+    if (!best || prompts > best.prompts || (prompts === best.prompts && date > best.date)) best = { date, prompts };
+  }
+  return best && best.prompts > 0 ? best : undefined;
 }
 
 export function trendArrow(previous: number | undefined, current: number): "" | "↑" | "↓" {

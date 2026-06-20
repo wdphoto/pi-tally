@@ -30,12 +30,17 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
         sessionId: record.sessionId,
         mtimeMs: record.mtimeMs,
         size: record.size,
-        prompts: record.prompts.filter((prompt) => (
-          isObject(prompt) &&
-          typeof prompt.timestamp === "number" &&
-          typeof prompt.date === "string" &&
-          typeof prompt.hour === "string"
-        )),
+        prompts: record.prompts.flatMap((prompt) => {
+          if (!isObject(prompt) || typeof prompt.timestamp !== "number" || typeof prompt.date !== "string" || typeof prompt.hour !== "string") return [];
+          const chars = typeof prompt.chars === "number" && Number.isFinite(prompt.chars) && prompt.chars > 0 ? Math.floor(prompt.chars) : undefined;
+          return [{
+            ...(typeof prompt.id === "string" ? { id: prompt.id } : {}),
+            timestamp: prompt.timestamp,
+            date: prompt.date,
+            hour: prompt.hour,
+            ...(chars !== undefined ? { chars } : {}),
+          }];
+        }),
         ...(typeof record.earliestDate === "string" ? { earliestDate: record.earliestDate } : {}),
       };
     }
@@ -47,6 +52,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
     daily: {},
     hourly: {},
     sessions: {},
+    crumbs: { totalChars: 0, dailyChars: {}, longestPromptChars: 0 },
     footerEnabled: raw.footerEnabled !== false,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now.toISOString(),
     ...(typeof raw.previousActiveDayAverage === "number" ? { previousActiveDayAverage: raw.previousActiveDayAverage } : {}),

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detailLines, footerText, modelChoiceLabel } from "../extensions/tally/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, dailyHigh, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, trendArrow, trendArrowForStore } from "../extensions/tally/stats.ts";
+import { allDetailLines, detailLines, footerText, modelChoiceLabel } from "../extensions/tally/ui.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, dailyHigh, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, totalSubmittedChars, trendArrow, trendArrowForStore, userMessageCharCount } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
@@ -53,7 +53,7 @@ test("activeDayAverage ignores low/noise days when active days exist", () => {
 
   assert.equal(activeDayAverage(store, fixedNow), 20);
   assert.equal(dailyHigh(store), 20);
-  assert.ok(detailLines(store, 3, fixedNow).includes("Daily high     20"));
+  assert.ok(detailLines(store, 3, fixedNow).includes("Record:        20 on 2026-06-14"));
 });
 
 test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", () => {
@@ -89,15 +89,88 @@ test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", ()
   });
 });
 
+test("Pi Crumbs count submitted user message text without treating it as keystrokes", () => {
+  assert.equal(userMessageCharCount({ role: "user", content: "hello 🌙" }), 7);
+  assert.equal(userMessageCharCount({ role: "user", content: [{ type: "text", text: "hello" }, { type: "input_text", value: " world" }] }), 11);
+
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [
+          { ...promptAt("2026-06-15", 10), chars: 7 },
+          { ...promptAt("2026-06-15", 11), chars: 11 },
+        ],
+      },
+    },
+  }, fixedNow);
+
+  assert.equal(totalSubmittedChars(store), 18);
+  assert.equal(store.crumbs.dailyChars["2026-06-15"], 18);
+  assert.ok(detailLines(store, 2, fixedNow).some((line) => line.startsWith("Pi Crumbs:     ")));
+});
+
+test("Pi Crumbs streak wording says again", () => {
+  const dates = ["2026-06-06", "2026-06-07", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14", "2026-06-15"];
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 0,
+        prompts: dates.map((date) => ({ ...promptAt(date, 10), chars: 1 })),
+      },
+    },
+  }, fixedNow);
+
+  const lines = detailLines(store, 10, fixedNow);
+  assert.ok(lines.includes("Streak:        10d current / 10d record"));
+  const crumb = lines.find((line) => line.startsWith("Pi Crumbs:")) ?? "";
+  assert.match(crumb, /Please don't do that again\./);
+  assert.doesNotMatch(crumb, /agent/);
+});
+
+test("allDetailLines lists every available Pi Crumb", () => {
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [
+          { ...promptAt("2026-06-15", 10), chars: 7 },
+          { ...promptAt("2026-06-15", 11), chars: 11 },
+        ],
+      },
+    },
+  }, fixedNow);
+
+  const lines = allDetailLines(store, 2, fixedNow, "deepseek/deepseek-v4-pro");
+  assert.ok(lines.includes("Pi Crumbs:"));
+  assert.ok(lines.includes("- 18 characters sent to Pi."));
+  assert.ok(lines.includes("- favorite model deepseek/deepseek-v4-pro"));
+  assert.ok(lines.includes("- avg prompt length 9 chars"));
+  assert.ok(lines.includes("- longest prompt 11 chars"));
+  assert.ok(lines.every((line) => !line.includes("current streak")));
+});
+
 test("modelChoiceLabel formats provider and model id", () => {
   assert.equal(modelChoiceLabel({ provider: "deepseek", id: "deepseek-v4-pro" }), "deepseek/deepseek-v4-pro");
   assert.equal(modelChoiceLabel({ id: "deepseek-v4-pro" }), "deepseek-v4-pro");
   assert.equal(modelChoiceLabel(undefined), undefined);
 });
 
-test("detailLines include active model when available", () => {
+test("detailLines include favorite model as a Pi Crumbs fact when available", () => {
   const store = createEmptyStore(fixedNow);
-  assert.ok(detailLines(store, 0, fixedNow, "deepseek/deepseek-v4-pro").includes("Model          deepseek/deepseek-v4-pro"));
+  assert.ok(detailLines(store, 0, fixedNow, "deepseek/deepseek-v4-pro").includes("Pi Crumbs:     favorite model deepseek/deepseek-v4-pro"));
 });
 
 test("footerText formats compact counters", () => {
@@ -126,7 +199,7 @@ test("replaceFileRecordIncremental updates aggregates without a full recompute",
         sessionId: "s1",
         mtimeMs: 0,
         size: 0,
-        prompts: [{ timestamp: 1, date: "2026-06-15", hour: "10" }],
+        prompts: [{ timestamp: 1, date: "2026-06-15", hour: "10", chars: 4 }],
       },
       old: {
         path: "old",
@@ -144,8 +217,8 @@ test("replaceFileRecordIncremental updates aggregates without a full recompute",
     mtimeMs: 1,
     size: 1,
     prompts: [
-      { timestamp: 1, date: "2026-06-15", hour: "10" },
-      { timestamp: 3, date: "2026-06-15", hour: "11" },
+      { timestamp: 1, date: "2026-06-15", hour: "10", chars: 4 },
+      { timestamp: 3, date: "2026-06-15", hour: "11", chars: 6 },
     ],
   }, fixedNow);
 
@@ -154,6 +227,8 @@ test("replaceFileRecordIncremental updates aggregates without a full recompute",
   assert.equal(updated.hourly["2026-06-15 11"], 1);
   assert.equal(updated.sessions.s1, 2);
   assert.equal(updated.sessions.s2, 1);
+  assert.equal(updated.crumbs.totalChars, 10);
+  assert.equal(updated.crumbs.longestPromptChars, 6);
 });
 
 test("trendArrow keeps showing direction when a baseline exists", () => {

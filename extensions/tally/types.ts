@@ -5,6 +5,7 @@ export interface PromptFact {
   timestamp: number;
   date: string;
   hour: string;
+  chars?: number;
 }
 
 export interface FileRecord {
@@ -16,12 +17,19 @@ export interface FileRecord {
   earliestDate?: string;
 }
 
+export interface PiCrumbs {
+  totalChars: number;
+  dailyChars: Record<string, number>;
+  longestPromptChars: number;
+}
+
 export interface TallyStore {
   version: typeof STORE_VERSION;
   files: Record<string, FileRecord>;
   daily: Record<string, number>;
   hourly: Record<string, number>;
   sessions: Record<string, number>;
+  crumbs: PiCrumbs;
   earliestDate?: string;
   previousActiveDayAverage?: number;
   footerEnabled: boolean;
@@ -54,12 +62,18 @@ export interface DetailSnapshot {
   hourlyRate: string;
   fiveHourDemand: FiveHourDemandStats;
   activeDayAverage: number;
-  dailyHigh: number;
+  last24HourPrompts: number;
   weeklyAverage: number;
+  weeklyTrend: "" | "↑" | "↓";
   monthlyAverage: number;
+  monthlyTrend: "" | "↑" | "↓";
+  recordDay?: { date: string; prompts: number };
+  currentStreakDays: number;
+  longestStreakDays: number;
   allTimePrompts: number;
   totalSessions: number;
   activeDays: number;
   calendarDays: number;
+  piCrumbsFact: string;
   earliestDate?: string;
 }
