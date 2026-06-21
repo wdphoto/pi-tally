@@ -4,6 +4,8 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.8 - 2026-06-21
+
 - Made `/tally` default output more explicit by adding message/day units and clearer active-path wording.
 - Kept the `/tally footer` preference global across loaded project instances and protected it from stale saves.
 - Made atomic store temp filenames unique to avoid same-millisecond concurrent save collisions.
