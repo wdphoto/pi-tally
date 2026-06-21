@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createEmptyStore, recomputeAggregates } from "./stats.ts";
@@ -70,9 +71,19 @@ export async function loadStore(path: string, now = new Date()): Promise<TallySt
   }
 }
 
+export async function loadFooterPreference(path: string): Promise<boolean | undefined> {
+  try {
+    const raw = JSON.parse(await readFile(path, "utf8")) as unknown;
+    if (isObject(raw) && raw.version === STORE_VERSION && typeof raw.footerEnabled === "boolean") return raw.footerEnabled;
+  } catch {
+    // Ignore missing, malformed, or partially-written files.
+  }
+  return undefined;
+}
+
 export async function saveStoreAtomic(path: string, store: TallyStore): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+  const tmp = `${path}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`;
   await writeFile(tmp, `${JSON.stringify(store, null, 2)}\n`, "utf8");
   await rename(tmp, path);
 }

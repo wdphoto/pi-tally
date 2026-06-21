@@ -4,7 +4,7 @@ Reminders, questions, and research notes. Product direction lives in `MAP.md`; r
 
 ## Research / decisions
 
-- Multi-window writes: decide whether pi-tally needs store merge/locking, or whether last-writer-wins is acceptable for now.
+- Multi-window writes: footer preference now gets extra stale-save protection; decide whether prompt counters need broader store merge/locking, or whether last-writer-wins is acceptable for now.
 - Real favorite model: verify the best attribution rule from Pi session history before claiming historical model usage.
 - Large history path: decide when to add persisted daily/hour/window summaries.
 

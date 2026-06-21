@@ -107,6 +107,8 @@ Do not add separators like trailing pipes. Pi composes extension statuses itself
 
 Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tally footer off`. This should persist locally and not require `/reload`.
 
+Treat the footer toggle as user-global for the active Pi agent directory, not project-local. When changing storage or live-update code, keep regression coverage for another loaded project seeing the disabled flag and not saving it back on.
+
 ## Map and stats notes
 
 - Keep `MAP.md` short and user/product focused; do not turn it into an agent scratchpad.

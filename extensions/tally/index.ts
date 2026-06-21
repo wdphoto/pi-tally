@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { stat } from "node:fs/promises";
 import { COMMAND_NAME, STATUS_KEY, resolveTallyPaths } from "./config.ts";
 import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts";
-import { loadStore, saveStoreAtomic } from "./storage.ts";
+import { loadFooterPreference, loadStore, saveStoreAtomic } from "./storage.ts";
 import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, todayStr, trendArrowForStore } from "./stats.ts";
 import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
 import { allDetailLines, detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
@@ -143,14 +143,33 @@ export default function piTally(pi: ExtensionAPI) {
   let arrow = "";
   let pendingSave: Promise<void> = Promise.resolve();
 
-  function queueSave(snapshot: TallyStore): void {
-    pendingSave = pendingSave.catch(() => undefined).then(() => saveStoreAtomic(paths.storeFile, snapshot));
+  type SaveOptions = { writeFooterPreference?: boolean };
+
+  async function snapshotWithCurrentFooterPreference(snapshot: TallyStore, options: SaveOptions = {}): Promise<TallyStore> {
+    if (options.writeFooterPreference) return snapshot;
+    const footerEnabled = await loadFooterPreference(paths.storeFile);
+    if (footerEnabled === undefined || footerEnabled === snapshot.footerEnabled) return snapshot;
+    return { ...snapshot, footerEnabled };
+  }
+
+  async function syncFooterPreference(): Promise<void> {
+    if (!store) return;
+    const footerEnabled = await loadFooterPreference(paths.storeFile);
+    if (footerEnabled !== undefined && footerEnabled !== store.footerEnabled) {
+      store = { ...store, footerEnabled };
+    }
+  }
+
+  function queueSave(snapshot: TallyStore, options: SaveOptions = {}): void {
+    pendingSave = pendingSave.catch(() => undefined).then(async () => {
+      await saveStoreAtomic(paths.storeFile, await snapshotWithCurrentFooterPreference(snapshot, options));
+    });
     void pendingSave.catch(() => undefined);
   }
 
-  async function saveNow(snapshot: TallyStore): Promise<void> {
+  async function saveNow(snapshot: TallyStore, options: SaveOptions = {}): Promise<void> {
     await pendingSave.catch(() => undefined);
-    await saveStoreAtomic(paths.storeFile, snapshot);
+    await saveStoreAtomic(paths.storeFile, await snapshotWithCurrentFooterPreference(snapshot, options));
   }
 
   async function loadAndRefresh(ctx: any): Promise<void> {
@@ -178,13 +197,14 @@ export default function piTally(pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const command = args.trim().replace(/\s+/g, " ");
       store ??= await loadStore(paths.storeFile);
+      await syncFooterPreference();
 
       if (command === "footer" || command === "footer on" || command === "footer off") {
         const enabled = command === "footer" ? store.footerEnabled === false : command === "footer on";
         store = { ...store, footerEnabled: enabled, updatedAt: new Date().toISOString() };
         activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
         activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
-        await saveNow(store);
+        await saveNow(store, { writeFooterPreference: true });
         setStatus(ctx);
         if (ctx.hasUI) ctx.ui.notify(`pi-tally: footer ${enabled ? "enabled" : "disabled"}`, "info");
         return;
@@ -240,6 +260,7 @@ export default function piTally(pi: ExtensionAPI) {
   pi.on("message_end", async (event, ctx) => {
     if (event.message?.role !== "user") return;
     store ??= await loadStore(paths.storeFile);
+    await syncFooterPreference();
     const now = new Date();
     const today = todayStr(now);
     activeTreePath = activeTreePathPromptCount(ctx.sessionManager) + 1;
@@ -252,6 +273,7 @@ export default function piTally(pi: ExtensionAPI) {
 
   pi.on("session_tree", async (_event, ctx) => {
     store ??= await loadStore(paths.storeFile);
+    await syncFooterPreference();
     activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
     activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
     setStatus(ctx);
@@ -259,6 +281,7 @@ export default function piTally(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async (_event, ctx) => {
     store ??= await loadStore(paths.storeFile);
+    await syncFooterPreference();
     store = await reconcileCurrentSession(store, ctx.sessionManager);
     store = { ...store, previousActiveDayAverage: activeDayAverage(store) };
     await saveNow(store);

@@ -53,7 +53,7 @@ test("activeDayAverage ignores low/noise days when active days exist", () => {
 
   assert.equal(activeDayAverage(store, fixedNow), 20);
   assert.equal(dailyHigh(store), 20);
-  assert.ok(detailLines(store, 3, fixedNow).includes("Record:        20 on 2026-06-14"));
+  assert.ok(detailLines(store, 3, fixedNow).includes("Record:        20 messages on 2026-06-14"));
 });
 
 test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", () => {
@@ -130,7 +130,7 @@ test("Pi Crumbs streak wording says again", () => {
   }, fixedNow);
 
   const lines = detailLines(store, 10, fixedNow);
-  assert.ok(lines.includes("Streak:        10d current / 10d record"));
+  assert.ok(lines.includes("Streak:        10 days current / 10 days record"));
   const crumb = lines.find((line) => line.startsWith("Pi Crumbs:")) ?? "";
   assert.match(crumb, /Please don't do that again\./);
   assert.doesNotMatch(crumb, /agent/);

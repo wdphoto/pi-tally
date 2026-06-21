@@ -29,6 +29,18 @@ export function wholeNumber(value: number): string {
   return Math.round(value).toLocaleString("en-US");
 }
 
+function messageCount(value: number): string {
+  return `${compactNumber(value)} ${value === 1 ? "message" : "messages"}`;
+}
+
+function dayCount(value: number): string {
+  return `${compactNumber(value)} ${value === 1 ? "day" : "days"}`;
+}
+
+function sessionCount(value: number): string {
+  return `${compactNumber(value)} ${value === 1 ? "session" : "sessions"}`;
+}
+
 export function footerText(activeTreePathTodayPrompts: number, store: TallyStore, arrow = "", now = new Date()): string {
   return `${compactNumber(activeTreePathTodayPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
 }
@@ -107,18 +119,19 @@ export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: nu
 
 export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): string[] {
   const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel);
-  const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate}/hr)` : "";
-  const record = s.recordDay ? `${compactNumber(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
-  const streak = s.currentStreakDays > 0 ? `${compactNumber(s.currentStreakDays)}d current / ${compactNumber(s.longestStreakDays)}d record` : "—";
+  const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
+  const record = s.recordDay ? `${messageCount(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
+  const streak = s.currentStreakDays > 0 ? `${dayCount(s.currentStreakDays)} current / ${dayCount(s.longestStreakDays)} record` : "—";
   return [
-    `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active / ${compactNumber(s.calendarDays)} calendar days)`,
-    `Tree:          ${compactNumber(s.activeTreePathPrompts)}`,
-    `Today:         ${compactNumber(s.todayPrompts)} so far${hourlySuffix}`,
-    `Daily:         avg ${compactNumber(s.activeDayAverage)}   24h ${compactNumber(s.last24HourPrompts)}   7d ${compactNumber(s.weeklyAverage)}${s.weeklyTrend}   30d ${compactNumber(s.monthlyAverage)}${s.monthlyTrend}`,
-    `5h window:     avg ${compactNumber(s.fiveHourDemand.average)}   high ${compactNumber(s.fiveHourDemand.high)}   peak ${compactNumber(s.fiveHourDemand.peak)}`,
+    `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active days / ${compactNumber(s.calendarDays)} calendar days)`,
+    `Tree:          ${messageCount(s.activeTreePathPrompts)} on active path`,
+    `Today:         ${messageCount(s.todayPrompts)} so far${hourlySuffix}`,
+    `Daily avg:     ${messageCount(s.activeDayAverage)}/day   last 24h ${messageCount(s.last24HourPrompts)}`,
+    `Recent avg:    7d ${messageCount(s.weeklyAverage)}/day${s.weeklyTrend}   30d ${messageCount(s.monthlyAverage)}/day${s.monthlyTrend}`,
+    `5h window:     avg ${messageCount(s.fiveHourDemand.average)}   high ${messageCount(s.fiveHourDemand.high)}   peak ${messageCount(s.fiveHourDemand.peak)}`,
     `Streak:        ${streak}`,
     `Record:        ${record}`,
-    `Total:         ${compactNumber(s.allTimePrompts)} across ${compactNumber(s.totalSessions)} sessions`,
+    `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
     "",
     `Pi Crumbs:     ${s.piCrumbsFact}`,
   ];
@@ -126,18 +139,19 @@ export function detailLines(store: TallyStore, activeTreePathPrompts: number, no
 
 export function allDetailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): string[] {
   const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel);
-  const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate}/hr)` : "";
-  const record = s.recordDay ? `${compactNumber(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
-  const streak = s.currentStreakDays > 0 ? `${compactNumber(s.currentStreakDays)}d current / ${compactNumber(s.longestStreakDays)}d record` : "—";
+  const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
+  const record = s.recordDay ? `${messageCount(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
+  const streak = s.currentStreakDays > 0 ? `${dayCount(s.currentStreakDays)} current / ${dayCount(s.longestStreakDays)} record` : "—";
   return [
-    `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active / ${compactNumber(s.calendarDays)} calendar days)`,
-    `Tree:          ${compactNumber(s.activeTreePathPrompts)}`,
-    `Today:         ${compactNumber(s.todayPrompts)} so far${hourlySuffix}`,
-    `Daily:         avg ${compactNumber(s.activeDayAverage)}   24h ${compactNumber(s.last24HourPrompts)}   7d ${compactNumber(s.weeklyAverage)}${s.weeklyTrend}   30d ${compactNumber(s.monthlyAverage)}${s.monthlyTrend}`,
-    `5h window:     avg ${compactNumber(s.fiveHourDemand.average)}   high ${compactNumber(s.fiveHourDemand.high)}   peak ${compactNumber(s.fiveHourDemand.peak)}`,
+    `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active days / ${compactNumber(s.calendarDays)} calendar days)`,
+    `Tree:          ${messageCount(s.activeTreePathPrompts)} on active path`,
+    `Today:         ${messageCount(s.todayPrompts)} so far${hourlySuffix}`,
+    `Daily avg:     ${messageCount(s.activeDayAverage)}/day   last 24h ${messageCount(s.last24HourPrompts)}`,
+    `Recent avg:    7d ${messageCount(s.weeklyAverage)}/day${s.weeklyTrend}   30d ${messageCount(s.monthlyAverage)}/day${s.monthlyTrend}`,
+    `5h window:     avg ${messageCount(s.fiveHourDemand.average)}   high ${messageCount(s.fiveHourDemand.high)}   peak ${messageCount(s.fiveHourDemand.peak)}`,
     `Streak:        ${streak}`,
     `Record:        ${record}`,
-    `Total:         ${compactNumber(s.allTimePrompts)} across ${compactNumber(s.totalSessions)} sessions`,
+    `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
     "",
     "Pi Crumbs:",
     ...piCrumbsFacts(store, now, activeModel).map((fact) => `- ${fact}`),

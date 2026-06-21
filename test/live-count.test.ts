@@ -121,10 +121,63 @@ test("/tally footer toggles and persists the footer status", async () => {
     assert.equal((await loadStore(join(agentDir, "pi-tally.json"))).footerEnabled, false);
     assert.deepEqual(fixture.notifications, ["pi-tally: footer disabled"]);
 
+    const handlers = new Map<string, (event: any, ctx: any) => Promise<void>>();
+    piTally({
+      on: (event: string, handler: (event: any, ctx: any) => Promise<void>) => handlers.set(event, handler),
+      registerCommand: () => undefined,
+    } as any);
+    const otherProject = makeCtx(agentDir);
+    await handlers.get("session_start")?.({ reason: "startup" }, otherProject.ctx);
+    assert.equal(otherProject.status, undefined);
+
     await commandHandler?.("footer on", fixture.ctx);
     assert.equal(fixture.status, "0/0/0");
     assert.equal((await loadStore(join(agentDir, "pi-tally.json"))).footerEnabled, true);
     assert.deepEqual(fixture.notifications, ["pi-tally: footer disabled", "pi-tally: footer enabled"]);
+  } finally {
+    if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+  }
+});
+
+test("loaded project instances pick up external footer disables before saving", async () => {
+  const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+  const agentDir = join(tmpdir(), `pi-tally-footer-shared-${process.pid}-${Date.now()}`);
+  await mkdir(agentDir, { recursive: true });
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
+  try {
+    let commandHandler: ((args: string, ctx: any) => Promise<void>) | undefined;
+    piTally({
+      on: () => undefined,
+      registerCommand: (_name: string, def: { handler: (args: string, ctx: any) => Promise<void> }) => {
+        commandHandler = def.handler;
+      },
+    } as any);
+
+    const loadedHandlers = new Map<string, (event: any, ctx: any) => Promise<void>>();
+    piTally({
+      on: (event: string, handler: (event: any, ctx: any) => Promise<void>) => loadedHandlers.set(event, handler),
+      registerCommand: () => undefined,
+    } as any);
+
+    const loadedProject = makeCtx(agentDir);
+    await loadedHandlers.get("session_start")?.({ reason: "startup" }, loadedProject.ctx);
+    assert.equal(loadedProject.status, "0/0/0");
+
+    await commandHandler?.("footer off", makeCtx(agentDir).ctx);
+    assert.equal((await loadStore(join(agentDir, "pi-tally.json"))).footerEnabled, false);
+
+    const now = new Date();
+    const noonToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
+    await loadedHandlers.get("message_end")?.({
+      message: { role: "user", content: "hi", timestamp: noonToday },
+    }, loadedProject.ctx);
+
+    assert.equal(loadedProject.status, undefined);
+
+    await loadedHandlers.get("session_shutdown")?.({ reason: "quit" }, loadedProject.ctx);
+    assert.equal((await loadStore(join(agentDir, "pi-tally.json"))).footerEnabled, false);
   } finally {
     if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
