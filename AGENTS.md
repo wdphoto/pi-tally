@@ -1,132 +1,49 @@
 # AGENTS.md
 
-Guidance for future coding agents working on `pi-tally`.
+Concise revival guide for future agents working on `pi-tally`.
 
-## Project
+## What this is
 
-`pi-tally` is a small Pi extension that counts local Pi user prompts and shows:
+`pi-tally` is a tiny local Pi extension. It counts **local Pi user prompts** and shows:
 
-- compact footer status
-- `/tally` compact detailed stats
-- `/tally all` stats plus every Pi Crumb
-- `/tally run` history indexing
-- `/tally status` storage/index info
+- footer status: `tree-path-today/today/active-day-average↑`
+- `/tally`: compact stats plus one rotating Crumb
+- `/tally all`: the same stats plus every available Crumb
+- `/tally run`: explicit history backfill/indexing
+- `/tally status`: storage and index info
 
-Keep it boring, local, and reliable.
+Keep it native-first, lightweight, boringly reliable, and a little fun.
 
-## Non-negotiables
+## Hard rules
 
-- No telemetry, analytics, uploads, sync, or network calls.
-- Do not add runtime dependencies unless there is a strong reason.
-- Do not scan all session history on startup. Full history indexing belongs behind `/tally run`.
-- Keep the README human-readable. No big manuals, no agent/internal planning notes.
+- No telemetry, analytics, sync, uploads, or network calls.
+- No runtime dependencies unless there is a very strong reason.
+- No full-history scan on startup. Full backfill belongs behind `/tally run` only.
+- No taxing background process. Normal live updates should touch only the active session/tree.
+- Parse Pi session JSONL defensively; malformed files must not crash Pi.
+- Keep README user-facing and short. No agent notes or internal manuals.
 - In README install/uninstall sections, list npm first and GitHub/source second.
 - Keep `package.json.files` limited to runtime package contents.
-- Treat Pi session JSONL parsing defensively. Bad session files must not crash Pi.
 
-## Layout
-
-Runtime extension:
+## Runtime layout
 
 ```text
 extensions/tally/
-  index.ts    Pi event wiring and commands
+  index.ts    Pi event wiring, commands, live reconciliation, footer updates
   config.ts   constants and path resolution
-  scanner.ts  session file discovery and JSONL parsing
-  stats.ts    counters, averages, trends
+  scanner.ts  explicit session discovery and defensive JSONL parsing
+  stats.ts    counters, aggregates, averages, trends, streaks
+  crumbs.ts   on-demand local-only fun facts
   storage.ts  versioned local store and atomic writes
   types.ts    shared types
   ui.ts       footer and `/tally` display formatting
 ```
 
-Tests live in `test/`. Pi does not load them, and npm package contents exclude them.
+Tests live in `test/`; Pi does not load them and npm excludes them.
 
-## Useful commands
+## Data model
 
-```bash
-npm run check
-npm test
-npm run pack:dry
-```
-
-## Releases
-
-Keep GitHub and npm releases in sync:
-
-- Update `CHANGE.md` before commits/pushes, and check it again before release.
-- Bump `package.json` and `package-lock.json` together.
-- Run `npm run check`, `npm test`, and `npm run pack:dry` before release.
-- Commit the version bump and code changes.
-- Create and push the matching git tag, e.g. `v0.0.2`.
-- Publish the same version to npm.
-- Create the matching GitHub Release from the tag.
-- Do not leave a pushed GitHub tag/version without the matching npm publish unless the user explicitly asks to pause.
-
-Local Pi test:
-
-```bash
-pi -e ./extensions/tally/index.ts
-```
-
-After installing/reloading Pi:
-
-```text
-/tally run
-/tally
-/tally all
-/tally status
-```
-
-## Pi docs to check before API/layout changes
-
-- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/extensions.md`
-- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/packages.md`
-- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/session-format.md`
-- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md` before touching custom UI
-
-## Footer behavior
-
-Footer format:
-
-```text
-tree-path-today/today/active-day-average↑
-```
-
-Example:
-
-```text
-5/52/84↑
-```
-
-- `tree-path-today` is user prompts on the current Pi tree path for the computer's local calendar day.
-- `today` is all indexed/live user prompts for the computer's local calendar day.
-- UTC session filenames are storage details; do not use them to decide user-facing days.
-- `/tally` shows `Tree` as the full active tree path total, including prompts from previous local days.
-
-Do not add separators like trailing pipes. Pi composes extension statuses itself.
-
-Users can toggle the footer with `/tally footer`, `/tally footer on`, and `/tally footer off`. This should persist locally and not require `/reload`.
-
-Treat the footer toggle as user-global for the active Pi agent directory, not project-local. When changing storage or live-update code, keep regression coverage for another loaded project seeing the disabled flag and not saving it back on.
-
-## Map and stats notes
-
-- Keep `MAP.md` short and user/product focused; do not turn it into an agent scratchpad.
-- Keep `TODO.md` for reminders, questions, and research notes.
-- Keep `CHANGE.md` as the changelog.
-- 5-hour window stats are for GPT plan selection.
-- Default 5-hour lookback should be 30 days for now; all-indexed history may come later, but only if calculation remains bounded/incremental.
-- For large histories, prefer persisted per-day/window summaries over recomputing every prompt on each `/tally` display.
-- Count user messages only for now; no real model-specific usage tracking yet.
-- `/tally run` should remain a one-time/backfill command. Normal future prompts should update live without asking users to rerun it.
-- `today` means the computer's local calendar day. Do not switch it to UTC or rolling 24h unless the user explicitly asks.
-- `/tally` should stay compact: since/tree/today/daily/5h window/streak/record/total plus one Pi Crumb.
-- `/tally all` should show the same stat block plus every available Pi Crumb, without a repeated details section.
-- Favorite model is currently a playful crumb from Pi's active model label. Future real favorite-model trends should attribute user prompts to the model that answered them, then show a simple 30-day model choice/trend line rather than all-time first.
-
-## Storage
-
-Default store path:
+Default store:
 
 ```text
 ~/.pi/agent/pi-tally.json
@@ -137,4 +54,77 @@ Respect:
 - `PI_CODING_AGENT_DIR`
 - `PI_CODING_AGENT_SESSION_DIR`
 
-Storage writes must remain atomic.
+The store is local JSON with atomic writes. It keeps indexed file records plus derived aggregates. If aggregates look suspect, rebuild them from file records rather than trusting stale counters.
+
+## Core behavior
+
+- Count user messages only.
+- `today` means the computer's local calendar day, not UTC and not rolling 24h.
+- Footer `tree-path-today` is the current Pi tree path for the local day.
+- `/tally` `Tree` is the full active tree path total, including previous local days.
+- Live `message_end` should not double-count if Pi already exposes the just-ended message.
+- Footer toggle is user-global for the active Pi agent directory, not project-local.
+- `/tally footer`, `/tally footer on`, and `/tally footer off` must persist without `/reload`.
+- Loaded projects must pick up an externally disabled footer before saving.
+
+## Crumbs
+
+Crumbs are on-demand, local-only trivia from data we already store. Keep them:
+
+- cheap enough to compute when `/tally` runs
+- unique/funny/interesting, not generic filler
+- privacy-safe: do not store or upload prompt text
+
+Current Crumbs use counts, timestamps, hours, dates, sessions, and character counts. If Crumbs become expensive for large histories, add persisted summaries instead of background scanning.
+
+## Commands to run
+
+```bash
+npm run check
+npm test
+npm run pack:dry
+```
+
+Local Pi smoke test:
+
+```bash
+pi -e ./extensions/tally/index.ts
+```
+
+Then in Pi:
+
+```text
+/tally run
+/tally
+/tally all
+/tally status
+```
+
+## Release checklist
+
+- Update `CHANGE.md` before commits/pushes and check it before release.
+- Bump `package.json` and `package-lock.json` together.
+- Run `npm run check`, `npm test`, and `npm run pack:dry`.
+- Commit code and version bump.
+- Tag as `vX.Y.Z`.
+- Publish the same version to npm.
+- Create the matching GitHub Release.
+- Do not leave a pushed GitHub tag/version without the matching npm publish unless explicitly asked to pause.
+
+## Pi docs to read before API/layout changes
+
+- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/extensions.md`
+- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/packages.md`
+- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/session-format.md`
+- `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md` before custom UI work
+
+## If rebuilding from scratch
+
+1. Resolve paths from Pi env vars, defaulting to `~/.pi/agent`.
+2. Load the local store defensively; migrate or start empty.
+3. On startup, refresh only known changed files plus the current session. Do not discover all history.
+4. On `message_end`, reconcile the active session and update footer immediately.
+5. Put all full session discovery behind `/tally run`.
+6. Keep storage atomic and local.
+7. Render compact stats from aggregates.
+8. Generate Crumbs on demand from existing local aggregates/file records.

@@ -31,6 +31,17 @@ test("parseSessionJsonl counts only user message entries and ignores malformed l
   assert.equal(record.prompts[1]?.chars, 5);
 });
 
+test("parseSessionJsonl handles a user message on the first line", () => {
+  const firstLine = JSON.stringify({ type: "message", id: "u1", timestamp: "2026-06-15T09:00:00.000Z", message: { role: "user", content: "first" } });
+  const record = parseSessionJsonl(`${firstLine}\n`, "/tmp/headerless.jsonl");
+
+  assert.ok(record);
+  assert.equal(record.sessionId, "/tmp/headerless.jsonl");
+  assert.equal(record.prompts.length, 1);
+  assert.equal(record.prompts[0]?.id, "u1");
+  assert.equal(record.prompts[0]?.chars, 5);
+});
+
 test("scanAllSessions walks nested Pi session directories", async () => {
   const sessionsDir = join(tmpdir(), `pi-tally-${process.pid}-${Date.now()}`, "sessions");
   const projectDir = join(sessionsDir, "--demo--");

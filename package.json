@@ -1,6 +1,6 @@
 {
   "name": "pi-tally",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Local prompt counters for the Pi coding agent.",
   "type": "module",
   "license": "MIT",

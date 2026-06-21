@@ -1,13 +1,10 @@
 import {
   activeDayAverage,
   activeDayCounts,
-  averagePromptChars,
   busiestDay,
   currentStreakDays,
   daysBetween,
   fiveHourDemand,
-  lateNightPrompts,
-  longestPromptChars,
   longestStreakDays,
   rollingAverage,
   rollingAverageTrendArrow,
@@ -17,16 +14,12 @@ import {
   todayStr,
   totalPrompts,
   totalSessions,
-  totalSubmittedChars,
 } from "./stats.ts";
+import { piCrumbsFact, piCrumbsFacts } from "./crumbs.ts";
 import type { DetailSnapshot, TallyPaths, TallyStore } from "./types.ts";
 
 export function compactNumber(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : String(value);
-}
-
-export function wholeNumber(value: number): string {
-  return Math.round(value).toLocaleString("en-US");
 }
 
 function messageCount(value: number): string {
@@ -54,43 +47,7 @@ export function modelChoiceLabel(model: unknown): string | undefined {
   return provider ? `${provider}/${id}` : id;
 }
 
-function piCrumbsFacts(store: TallyStore, now = new Date(), activeModel?: string): string[] {
-  const totalChars = totalSubmittedChars(store);
-  const currentStreak = currentStreakDays(store, now);
-  const longestStreak = longestStreakDays(store);
-  const latePrompts = lateNightPrompts(store);
-  const longestPrompt = longestPromptChars(store);
-  const busiest = busiestDay(store);
-  const facts = [
-    ...(totalChars > 0 ? [`${wholeNumber(totalChars)} characters sent to Pi.`] : []),
-    ...(activeModel ? [`favorite model ${activeModel}`] : []),
-    ...(totalChars > 0 ? [`avg prompt length ${compactNumber(averagePromptChars(store))} chars`] : []),
-    ...(longestPrompt > 0 ? [`longest prompt ${compactNumber(longestPrompt)} chars`] : []),
-    ...(currentStreak >= 10 ? [`You have a ${compactNumber(currentStreak)}-day streak. Please don't do that again.`] : []),
-    ...(longestStreak >= 10 && longestStreak !== currentStreak ? [`You had a ${compactNumber(longestStreak)}-day streak. Please don't do that again.`] : []),
-    ...(latePrompts > 0 ? [`${compactNumber(latePrompts)} late-night prompts indexed`] : []),
-    ...(busiest ? [`busiest day ${busiest.date} with ${compactNumber(busiest.prompts)} prompts`] : []),
-  ];
-
-  return facts.length > 0 ? facts : ["counting prompt characters from now on"];
-}
-
-function piCrumbsFact(store: TallyStore, now = new Date(), activeModel?: string): string {
-  const hour = now.getHours();
-  const latePrompts = lateNightPrompts(store);
-  if ((hour >= 23 || hour < 5) && todayPrompts(store, now) > 0) {
-    return latePrompts > 0 ? `${compactNumber(latePrompts)} late-night prompts indexed. Go to bed?` : "working late. Go to bed?";
-  }
-
-  const currentStreak = currentStreakDays(store, now);
-  if (currentStreak >= 10) return `You have a ${compactNumber(currentStreak)}-day streak. Please don't do that again.`;
-
-  const facts = piCrumbsFacts(store, now, activeModel);
-  const daySeed = Number(todayStr(now).replace(/-/g, ""));
-  return facts[daySeed % facts.length] ?? facts[0] ?? "counting prompt characters from now on";
-}
-
-export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): DetailSnapshot {
+export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string, piCrumbsRotationIndex?: number): DetailSnapshot {
   const today = todayStr(now);
   const recordDay = busiestDay(store);
   return {
@@ -112,13 +69,13 @@ export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: nu
     totalSessions: totalSessions(store),
     activeDays: activeDayCounts(store, undefined, now).length,
     calendarDays: daysBetween(store.earliestDate || today, today),
-    piCrumbsFact: piCrumbsFact(store, now, activeModel),
+    piCrumbsFact: piCrumbsFact(store, now, activeModel, piCrumbsRotationIndex),
     ...(store.earliestDate ? { earliestDate: store.earliestDate } : {}),
   };
 }
 
-export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): string[] {
-  const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel);
+export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string, piCrumbsRotationIndex?: number): string[] {
+  const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel, piCrumbsRotationIndex);
   const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
   const record = s.recordDay ? `${messageCount(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
   const streak = s.currentStreakDays > 0 ? `${dayCount(s.currentStreakDays)} current / ${dayCount(s.longestStreakDays)} record` : "—";
@@ -133,7 +90,7 @@ export function detailLines(store: TallyStore, activeTreePathPrompts: number, no
     `Record:        ${record}`,
     `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
     "",
-    `Pi Crumbs:     ${s.piCrumbsFact}`,
+    `Crumb:         ${s.piCrumbsFact}`,
   ];
 }
 
@@ -153,7 +110,7 @@ export function allDetailLines(store: TallyStore, activeTreePathPrompts: number,
     `Record:        ${record}`,
     `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
     "",
-    "Pi Crumbs:",
+    "Crumbs:",
     ...piCrumbsFacts(store, now, activeModel).map((fact) => `- ${fact}`),
   ];
 }

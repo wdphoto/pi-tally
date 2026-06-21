@@ -89,7 +89,7 @@ test("fiveHourDemand summarizes active daily 5h peaks over the last 30 days", ()
   });
 });
 
-test("Pi Crumbs count submitted user message text without treating it as keystrokes", () => {
+test("Crumbs count submitted user message text without treating it as keystrokes", () => {
   assert.equal(userMessageCharCount({ role: "user", content: "hello 🌙" }), 7);
   assert.equal(userMessageCharCount({ role: "user", content: [{ type: "text", text: "hello" }, { type: "input_text", value: " world" }] }), 11);
 
@@ -111,10 +111,10 @@ test("Pi Crumbs count submitted user message text without treating it as keystro
 
   assert.equal(totalSubmittedChars(store), 18);
   assert.equal(store.crumbs.dailyChars["2026-06-15"], 18);
-  assert.ok(detailLines(store, 2, fixedNow).some((line) => line.startsWith("Pi Crumbs:     ")));
+  assert.ok(detailLines(store, 2, fixedNow).some((line) => line.startsWith("Crumb:         ")));
 });
 
-test("Pi Crumbs streak wording says again", () => {
+test("Crumb current record streak wording is direct", () => {
   const dates = ["2026-06-06", "2026-06-07", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14", "2026-06-15"];
   const store = recomputeAggregates({
     ...createEmptyStore(fixedNow),
@@ -131,12 +131,12 @@ test("Pi Crumbs streak wording says again", () => {
 
   const lines = detailLines(store, 10, fixedNow);
   assert.ok(lines.includes("Streak:        10 days current / 10 days record"));
-  const crumb = lines.find((line) => line.startsWith("Pi Crumbs:")) ?? "";
-  assert.match(crumb, /Please don't do that again\./);
+  const crumb = lines.find((line) => line.startsWith("Crumb:")) ?? "";
+  assert.match(crumb, /You are on a 10 day streak\. Seek therapy\./);
   assert.doesNotMatch(crumb, /agent/);
 });
 
-test("allDetailLines lists every available Pi Crumb", () => {
+test("allDetailLines lists every available Crumb", () => {
   const store = recomputeAggregates({
     ...createEmptyStore(fixedNow),
     files: {
@@ -154,12 +154,50 @@ test("allDetailLines lists every available Pi Crumb", () => {
   }, fixedNow);
 
   const lines = allDetailLines(store, 2, fixedNow, "deepseek/deepseek-v4-pro");
-  assert.ok(lines.includes("Pi Crumbs:"));
+  assert.ok(lines.includes("Crumbs:"));
   assert.ok(lines.includes("- 18 characters sent to Pi."));
   assert.ok(lines.includes("- favorite model deepseek/deepseek-v4-pro"));
   assert.ok(lines.includes("- avg prompt length 9 chars"));
   assert.ok(lines.includes("- longest prompt 11 chars"));
   assert.ok(lines.every((line) => !line.includes("current streak")));
+});
+
+test("allDetailLines includes low-hanging data Crumbs", () => {
+  const oldPrompt = [{ ...promptAt("2026-05-01", 12), chars: 100 }];
+  const allHours = Array.from({ length: 24 }, (_, hour) => ({ ...promptAt("2026-06-13", hour), chars: 100 }));
+  const storm = Array.from({ length: 20 }, (_, i) => ({ ...promptAt("2026-06-14", 1, i), chars: 100 }));
+  const today = [
+    { ...promptAt("2026-06-15", 9), chars: 6000 },
+    ...Array.from({ length: 49 }, (_, i) => ({ ...promptAt("2026-06-15", 5 + (i % 17), i % 60), chars: 100 })),
+  ];
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "main",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [...oldPrompt, ...allHours, ...storm, ...today],
+      },
+    },
+  }, fixedNow);
+
+  const lines = allDetailLines(store, 95, fixedNow);
+  const includes = (text: string) => assert.ok(lines.some((line) => line.includes(text)), lines.join("\n"));
+  includes("Most suspicious hour: 1am with 21 messages.");
+  includes("You have prompted at all 24 hours. Circadian rhythm not found.");
+  includes("28% of prompts happen after 10pm. Time is a suggestion.");
+  includes("Monday is your Pi day: 53% of indexed prompts.");
+  includes("Weekend prompts: 44. Weekend status: compromised.");
+  includes("Longest quiet spell: 42 days. Pi probably missed you.");
+  includes("Busiest month: June 2026 with 94 messages.");
+  includes("Largest session: 95 messages. That file has seen things.");
+  includes("Prompt storm: 20 messages in 60 minutes.");
+  includes("Longest gap between prompts: 43 days. Character development.");
+  includes("Top character day: 2026-06-15 with 11k chars.");
+  includes("Your longest prompt was 37x your average. Ctrl+V incident?");
+  includes("Only 5 messages until 100 total.");
 });
 
 test("modelChoiceLabel formats provider and model id", () => {
@@ -168,9 +206,9 @@ test("modelChoiceLabel formats provider and model id", () => {
   assert.equal(modelChoiceLabel(undefined), undefined);
 });
 
-test("detailLines include favorite model as a Pi Crumbs fact when available", () => {
+test("detailLines include favorite model as a Crumb fact when available", () => {
   const store = createEmptyStore(fixedNow);
-  assert.ok(detailLines(store, 0, fixedNow, "deepseek/deepseek-v4-pro").includes("Pi Crumbs:     favorite model deepseek/deepseek-v4-pro"));
+  assert.ok(detailLines(store, 0, fixedNow, "deepseek/deepseek-v4-pro").includes("Crumb:         favorite model deepseek/deepseek-v4-pro"));
 });
 
 test("footerText formats compact counters", () => {

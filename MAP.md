@@ -2,12 +2,12 @@
 
 ## Direction
 
-Keep pi-tally a tiny local Pi counter: useful prompt stats, a compact footer, and a few local-only Pi Crumbs. No telemetry, sync, or network calls.
+Keep pi-tally a tiny local Pi counter: useful prompt stats, a compact footer, and a few local-only Crumbs. No telemetry, sync, or network calls.
 
 ## Current shape
 
 - `/tally` is the short human dashboard.
-- `/tally all` is the same dashboard plus every available Pi Crumb.
+- `/tally all` is the same dashboard plus every available Crumb.
 - `/tally run` is the explicit history backfill. Do not scan all history on startup.
 - Footer stays compact: `tree-path-today/today/active-day-average↑`.
 - `today` means the computer's local calendar day.
@@ -15,14 +15,8 @@ Keep pi-tally a tiny local Pi counter: useful prompt stats, a compact footer, an
 
 ## Next
 
-- Add better Pi Crumbs:
-  - `Most suspicious hour: 1am with 482 prompts.`
-  - `You like to work between 10pm–1am.`
-  - `% of prompts after 10pm` / late-night share.
-  - `1am is apparently a business hour now.`
-- Move crumb generation out of `ui.ts` into `crumbs.ts`.
+- Add another pass of better Crumbs after seeing which low-hanging facts are actually fun.
 - Share one summary-line builder between `/tally` and `/tally all`.
-- Make unknown subcommands warn and return instead of also showing stats.
 
 ## Later
 
@@ -32,7 +26,7 @@ Keep pi-tally a tiny local Pi counter: useful prompt stats, a compact footer, an
   - prefer 30-day trends over all-time trivia
 - Exclude/omit project option keyed by canonical session/project path.
 - For very large histories, persist daily/hour/window summaries instead of scanning prompt records on every display.
-- Consider multi-window store safety. Atomic writes prevent corruption, but two Pi windows can still last-writer-win each other.
+- Improve multi-window store merging beyond serialized in-process writes; atomic writes prevent corruption, but separate Pi processes can still last-writer-win each other.
 
 ## Not now
 

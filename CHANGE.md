@@ -4,6 +4,16 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.9 - 2026-06-21
+
+- Added more local-only Crumbs from existing tally data: suspicious hours, late-night share, weekend/weekday patterns, quiet gaps, session size, prompt storms, character records, and near-milestones.
+- Serialized local store saves across loaded extension instances so footer preference toggles are not raced by stale background saves.
+- Avoided double-counting live user prompts when Pi already exposes the just-ended message in the active tree path.
+- Made unknown `/tally` subcommands warn and stop instead of rendering normal stats.
+- Moved Crumb generation into `crumbs.ts` to keep display formatting simple.
+- Made JSONL parsing count a first-line user message when a malformed/headerless session file lacks a session header.
+- Preserved the persisted `updatedAt` value when loading and migrating the local store.
+
 ## 0.0.8 - 2026-06-21
 
 - Made `/tally` default output more explicit by adding message/day units and clearer active-path wording.
@@ -19,11 +29,11 @@ All notable changes to `pi-tally` are tracked here.
 
 ## 0.0.6 - 2026-06-20
 
-- Cleaned up `/tally` output: removed the header, moved `Since` to the top, renamed tree-path display to `Tree`, and moved Pi Crumbs to the bottom.
+- Cleaned up `/tally` output: removed the header, moved `Since` to the top, renamed tree-path display to `Tree`, and moved Crumbs to the bottom.
 - Replaced separate 7-day and 30-day average lines with one compact `Daily` line showing all-time active-day average plus 24h, 7d, and 30d recent activity.
 - Added all-time `Record` and current/record `Streak` lines to the main `/tally` output.
-- Added `/tally all` for normal stats plus a full list of available Pi Crumbs.
-- Added Pi Crumbs, a rotating `/tally` fun-fact line with submitted characters, favorite model, prompt length, streak, busiest-day, and late-night usage facts.
+- Added `/tally all` for normal stats plus a full list of available Crumbs.
+- Added Crumbs, a rotating `/tally` fun-fact line with submitted characters, favorite model, prompt length, streak, busiest-day, and late-night usage facts.
 
 ## 0.0.5 - 2026-06-17
 

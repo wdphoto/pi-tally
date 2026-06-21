@@ -14,10 +14,12 @@ export function parseSessionJsonl(content: string, filePath: string, fileStat?: 
   let sessionId = filePath;
   let fallbackTimestamp = Date.now();
   let earliestDate: string | undefined;
+  let firstPromptLine = 0;
 
   try {
     const header: unknown = JSON.parse(lines[0] ?? "{}");
-    if (isRecord(header)) {
+    if (isRecord(header) && !promptFactFromEntry(header, fallbackTimestamp)) {
+      firstPromptLine = 1;
       if (typeof header.id === "string") sessionId = header.id;
       if (typeof header.timestamp === "string" || typeof header.timestamp === "number") {
         const parsed = new Date(header.timestamp);
@@ -29,7 +31,7 @@ export function parseSessionJsonl(content: string, filePath: string, fileStat?: 
   }
 
   const prompts = [];
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = firstPromptLine; i < lines.length; i++) {
     const line = lines[i];
     if (!line || !line.includes('"message"')) continue;
     try {

@@ -62,7 +62,7 @@ Streak:        5 days current / 12 days record
 Record:        221 messages on 2026-06-14
 Total:         5.6k messages across 350 sessions
 
-Pi Crumbs:     899,934 characters sent to Pi.
+Crumb:         899,934 characters sent to Pi.
 ```
 
 ## Data

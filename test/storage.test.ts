@@ -56,6 +56,17 @@ test("migrateStore preserves prompt character crumbs", () => {
   assert.equal(store.crumbs.dailyChars["2026-06-15"], 12);
 });
 
+test("migrateStore preserves persisted updatedAt", () => {
+  const persistedAt = "2026-06-14T01:02:03.000Z";
+  const store = migrateStore({
+    version: 1,
+    updatedAt: persistedAt,
+    files: {},
+  }, fixedNow);
+
+  assert.equal(store.updatedAt, persistedAt);
+});
+
 test("migrateStore preserves disabled footer setting", () => {
   const store = migrateStore({
     version: 1,

@@ -59,7 +59,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
     ...(typeof raw.previousActiveDayAverage === "number" ? { previousActiveDayAverage: raw.previousActiveDayAverage } : {}),
   };
 
-  return recomputeAggregates(migrated, now);
+  return { ...recomputeAggregates(migrated, now), updatedAt: migrated.updatedAt };
 }
 
 export async function loadStore(path: string, now = new Date()): Promise<TallyStore> {

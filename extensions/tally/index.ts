@@ -3,8 +3,8 @@ import { stat } from "node:fs/promises";
 import { COMMAND_NAME, STATUS_KEY, resolveTallyPaths } from "./config.ts";
 import { refreshKnownChangedFiles, rebuildStoreFromSessions } from "./scanner.ts";
 import { loadFooterPreference, loadStore, saveStoreAtomic } from "./storage.ts";
-import { activeDayAverage, countUserMessages, promptFactFromEntry, replaceFileRecordIncremental, todayStr, trendArrowForStore } from "./stats.ts";
-import type { FileRecord, TallyPaths, TallyStore } from "./types.ts";
+import { activeDayAverage, promptFactFromEntry, replaceFileRecordIncremental, todayStr, trendArrowForStore } from "./stats.ts";
+import type { FileRecord, PromptFact, TallyPaths, TallyStore } from "./types.ts";
 import { allDetailLines, detailLines, footerText, modelChoiceLabel, statusLines, truncatePlainLine } from "./ui.ts";
 
 function currentSessionRecord(sessionManager: any): FileRecord | undefined {
@@ -32,16 +32,31 @@ function currentSessionRecord(sessionManager: any): FileRecord | undefined {
   };
 }
 
-function currentSessionRecordWithPendingUserMessage(sessionManager: any, message: unknown): FileRecord | undefined {
+function promptFactFromUserMessage(message: unknown, fallback = Date.now()): PromptFact | undefined {
+  const m = message as { id?: unknown; timestamp?: unknown } | undefined;
+  return promptFactFromEntry({
+    type: "message",
+    ...(typeof m?.id === "string" ? { id: m.id } : {}),
+    timestamp: m?.timestamp,
+    message,
+  }, fallback);
+}
+
+function samePromptFact(a: PromptFact, b: PromptFact): boolean {
+  if (a.id && b.id) return a.id === b.id;
+  return a.timestamp === b.timestamp && a.date === b.date && a.hour === b.hour && a.chars === b.chars;
+}
+
+function promptFactsInclude(prompts: PromptFact[], fact: PromptFact): boolean {
+  return prompts.some((prompt) => samePromptFact(prompt, fact));
+}
+
+function currentSessionRecordWithPendingUserMessage(sessionManager: any, message: unknown, now = new Date()): FileRecord | undefined {
   const record = currentSessionRecord(sessionManager);
   if (!record) return undefined;
 
-  const fact = promptFactFromEntry({
-    type: "message",
-    timestamp: (message as { timestamp?: unknown })?.timestamp,
-    message,
-  });
-  if (!fact) return record;
+  const fact = promptFactFromUserMessage(message, now.getTime());
+  if (!fact || promptFactsInclude(record.prompts, fact)) return record;
 
   const earliestDate = !record.earliestDate || fact.date < record.earliestDate ? fact.date : record.earliestDate;
   return {
@@ -62,33 +77,23 @@ async function currentSessionRecordWithStat(sessionManager: any): Promise<FileRe
   }
 }
 
-function activeTreePathPromptCount(sessionManager: any): number {
+function activeTreePathPromptFacts(sessionManager: any): PromptFact[] {
   try {
-    return countUserMessages(sessionManager.getBranch?.() ?? []);
+    return Array.from(sessionManager.getBranch?.() ?? []).flatMap((entry) => {
+      const fact = promptFactFromEntry(entry);
+      return fact ? [fact] : [];
+    });
   } catch {
-    return 0;
+    return [];
   }
+}
+
+function activeTreePathPromptCount(sessionManager: any): number {
+  return activeTreePathPromptFacts(sessionManager).length;
 }
 
 function activeTreePathPromptCountForDate(sessionManager: any, date: string): number {
-  try {
-    let count = 0;
-    for (const entry of sessionManager.getBranch?.() ?? []) {
-      if (promptFactFromEntry(entry)?.date === date) count++;
-    }
-    return count;
-  } catch {
-    return 0;
-  }
-}
-
-function pendingUserMessageCountForDate(message: unknown, date: string, now = new Date()): number {
-  const fact = promptFactFromEntry({
-    type: "message",
-    timestamp: (message as { timestamp?: unknown })?.timestamp,
-    message,
-  }, now.getTime());
-  return fact?.date === date ? 1 : 0;
+  return activeTreePathPromptFacts(sessionManager).filter((fact) => fact.date === date).length;
 }
 
 function preserveKnownFileStats(store: TallyStore, record: FileRecord): FileRecord {
@@ -97,16 +102,29 @@ function preserveKnownFileStats(store: TallyStore, record: FileRecord): FileReco
   return { ...record, mtimeMs: known.mtimeMs, size: known.size };
 }
 
-function reconcilePendingUserMessage(store: TallyStore, sessionManager: any, message: unknown): TallyStore {
-  const record = currentSessionRecordWithPendingUserMessage(sessionManager, message);
+function reconcilePendingUserMessage(store: TallyStore, sessionManager: any, message: unknown, now = new Date()): TallyStore {
+  const record = currentSessionRecordWithPendingUserMessage(sessionManager, message, now);
   if (!record) return store;
-  return replaceFileRecordIncremental(store, preserveKnownFileStats(store, record));
+  return replaceFileRecordIncremental(store, preserveKnownFileStats(store, record), now);
 }
 
 async function reconcileCurrentSession(store: TallyStore, sessionManager: any): Promise<TallyStore> {
   const record = await currentSessionRecordWithStat(sessionManager);
   if (!record) return store;
   return replaceFileRecordIncremental(store, record);
+}
+
+const storeSaveQueues = new Map<string, Promise<void>>();
+
+function enqueueStoreSave(path: string, task: () => Promise<void>): Promise<void> {
+  const previous = storeSaveQueues.get(path) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(task);
+  const settled = run.catch(() => undefined);
+  storeSaveQueues.set(path, settled);
+  void settled.then(() => {
+    if (storeSaveQueues.get(path) === settled) storeSaveQueues.delete(path);
+  });
+  return run;
 }
 
 async function showLines(ctx: any, lines: string[]): Promise<void> {
@@ -116,7 +134,7 @@ async function showLines(ctx: any, lines: string[]): Promise<void> {
         render(width: number): string[] {
           return lines.map((line) => {
             const plain = truncatePlainLine(line, Math.min(width, 88));
-            if (line.startsWith("Since:") || line.startsWith("Pi Crumbs")) return theme.fg("accent", plain);
+            if (line.startsWith("Since:") || line.startsWith("Crumb")) return theme.fg("accent", plain);
             if (line.startsWith("Local") || line.includes("only counts")) return theme.fg("dim", plain);
             return plain;
           });
@@ -141,7 +159,7 @@ export default function piTally(pi: ExtensionAPI) {
   let activeTreePath = 0;
   let activeTreePathToday = 0;
   let arrow = "";
-  let pendingSave: Promise<void> = Promise.resolve();
+  let piCrumbsRotationIndex = 0;
 
   type SaveOptions = { writeFooterPreference?: boolean };
 
@@ -161,15 +179,15 @@ export default function piTally(pi: ExtensionAPI) {
   }
 
   function queueSave(snapshot: TallyStore, options: SaveOptions = {}): void {
-    pendingSave = pendingSave.catch(() => undefined).then(async () => {
+    void enqueueStoreSave(paths.storeFile, async () => {
       await saveStoreAtomic(paths.storeFile, await snapshotWithCurrentFooterPreference(snapshot, options));
-    });
-    void pendingSave.catch(() => undefined);
+    }).catch(() => undefined);
   }
 
   async function saveNow(snapshot: TallyStore, options: SaveOptions = {}): Promise<void> {
-    await pendingSave.catch(() => undefined);
-    await saveStoreAtomic(paths.storeFile, await snapshotWithCurrentFooterPreference(snapshot, options));
+    await enqueueStoreSave(paths.storeFile, async () => {
+      await saveStoreAtomic(paths.storeFile, await snapshotWithCurrentFooterPreference(snapshot, options));
+    });
   }
 
   async function loadAndRefresh(ctx: any): Promise<void> {
@@ -192,12 +210,20 @@ export default function piTally(pi: ExtensionAPI) {
     ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", footerText(activeTreePathToday, store, arrow)));
   }
 
+  function nextPiCrumbsRotationIndex(): number {
+    const current = piCrumbsRotationIndex;
+    piCrumbsRotationIndex = (piCrumbsRotationIndex + 1) % Number.MAX_SAFE_INTEGER;
+    return current;
+  }
+
   pi.registerCommand(COMMAND_NAME, {
     description: "Show local Pi prompt counters",
     handler: async (args, ctx) => {
       const command = args.trim().replace(/\s+/g, " ");
       store ??= await loadStore(paths.storeFile);
       await syncFooterPreference();
+
+      let detailPiCrumbsRotationIndex: number | undefined;
 
       if (command === "footer" || command === "footer on" || command === "footer off") {
         const enabled = command === "footer" ? store.footerEnabled === false : command === "footer on";
@@ -240,7 +266,9 @@ export default function piTally(pi: ExtensionAPI) {
         return;
       } else if (command.length > 0) {
         if (ctx.hasUI) ctx.ui.notify("Usage: /tally, /tally all, /tally run, /tally status, /tally footer [on|off]", "warning");
+        return;
       } else {
+        detailPiCrumbsRotationIndex = nextPiCrumbsRotationIndex();
         store = await reconcileCurrentSession(store, ctx.sessionManager);
         activeTreePath = activeTreePathPromptCount(ctx.sessionManager);
         activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, todayStr());
@@ -249,7 +277,7 @@ export default function piTally(pi: ExtensionAPI) {
         setStatus(ctx);
       }
 
-      await showLines(ctx, detailLines(store, activeTreePath, new Date(), modelChoiceLabel(ctx.model)));
+      await showLines(ctx, detailLines(store, activeTreePath, new Date(), modelChoiceLabel(ctx.model), detailPiCrumbsRotationIndex));
     },
   });
 
@@ -263,10 +291,13 @@ export default function piTally(pi: ExtensionAPI) {
     await syncFooterPreference();
     const now = new Date();
     const today = todayStr(now);
-    activeTreePath = activeTreePathPromptCount(ctx.sessionManager) + 1;
-    activeTreePathToday = activeTreePathPromptCountForDate(ctx.sessionManager, today) + pendingUserMessageCountForDate(event.message, today, now);
-    store = reconcilePendingUserMessage(store, ctx.sessionManager, event.message);
-    arrow = trendArrowForStore(store);
+    const branchFacts = activeTreePathPromptFacts(ctx.sessionManager);
+    const pendingFact = promptFactFromUserMessage(event.message, now.getTime());
+    const shouldCountPending = !!pendingFact && !promptFactsInclude(branchFacts, pendingFact);
+    activeTreePath = branchFacts.length + (shouldCountPending ? 1 : 0);
+    activeTreePathToday = branchFacts.filter((fact) => fact.date === today).length + (shouldCountPending && pendingFact?.date === today ? 1 : 0);
+    store = reconcilePendingUserMessage(store, ctx.sessionManager, event.message, now);
+    arrow = trendArrowForStore(store, now);
     setStatus(ctx);
     queueSave(store);
   });
