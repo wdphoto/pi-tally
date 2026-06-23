@@ -6,6 +6,7 @@ import {
   daysBetween,
   fiveHourDemand,
   longestStreakDays,
+  responseSpeedStats,
   rollingAverage,
   rollingAverageTrendArrow,
   rollingPromptCount,
@@ -17,6 +18,13 @@ import {
 } from "./stats.ts";
 import { piCrumbsFact, piCrumbsFacts } from "./crumbs.ts";
 import type { DetailSnapshot, TallyPaths, TallyStore } from "./types.ts";
+
+type ThemeLike = { fg?: (color: string, value: string) => string };
+
+export interface FooterSpeedometer {
+  tps: number;
+  live?: boolean;
+}
 
 export function compactNumber(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : String(value);
@@ -38,6 +46,43 @@ export function footerText(activeTreePathTodayPrompts: number, store: TallyStore
   return `${compactNumber(activeTreePathTodayPrompts)}/${compactNumber(todayPrompts(store, now))}/${compactNumber(activeDayAverage(store, now))}${arrow}`;
 }
 
+function tps(value: number | undefined): string {
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? `${value.toFixed(value >= 10 ? 0 : 1)} tok/s` : "—";
+}
+
+function speedometerStage(value: number): number {
+  const thresholds = [8, 16, 28, 44, 64, 90, 120];
+  return thresholds.filter((threshold) => value >= threshold).length;
+}
+
+function stageColor(index: number): string {
+  if (index < 2) return "dim";
+  if (index < 4) return "muted";
+  if (index < 5) return "text";
+  return "accent";
+}
+
+function fg(theme: ThemeLike | undefined, color: string, value: string): string {
+  return theme?.fg?.(color, value) ?? value;
+}
+
+export function speedometerText(speedometer: FooterSpeedometer | undefined, theme?: ThemeLike): string {
+  if (!speedometer || !Number.isFinite(speedometer.tps) || speedometer.tps < 0) return "";
+  const stage = speedometerStage(speedometer.tps);
+  const label = fg(theme, "dim", `${speedometer.live ? "~" : ""}${tps(speedometer.tps)}`);
+  const dots = Array.from({ length: 7 }, (_, index) => {
+    const active = index < stage;
+    return fg(theme, active ? stageColor(index) : "dim", active ? "●" : "○");
+  }).join("");
+  return `${label} ${dots}`;
+}
+
+export function footerStatusText(activeTreePathTodayPrompts: number, store: TallyStore, arrow = "", speedometer?: FooterSpeedometer, theme?: ThemeLike, now = new Date()): string {
+  const base = fg(theme, "dim", footerText(activeTreePathTodayPrompts, store, arrow, now));
+  const speed = speedometerText(speedometer, theme);
+  return speed ? `${base}  ${speed}` : base;
+}
+
 export function modelChoiceLabel(model: unknown): string | undefined {
   if (!model || typeof model !== "object") return undefined;
   const m = model as { provider?: unknown; id?: unknown; modelId?: unknown; name?: unknown };
@@ -55,6 +100,7 @@ export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: nu
     activeTreePathPrompts,
     todayPrompts: todayPrompts(store, now),
     hourlyRate: todayHourlyRate(store, now),
+    responseSpeed: responseSpeedStats(store),
     fiveHourDemand: fiveHourDemand(store, now),
     activeDayAverage: activeDayAverage(store, now),
     last24HourPrompts: rollingPromptCount(store, 24, now),
@@ -74,6 +120,11 @@ export function buildDetailSnapshot(store: TallyStore, activeTreePathPrompts: nu
   };
 }
 
+function responseSpeedLine(speed: DetailSnapshot["responseSpeed"]): string {
+  const samples = speed.samples > 0 ? ` (${compactNumber(speed.samples)} ${speed.samples === 1 ? "sample" : "samples"})` : "";
+  return `TPS meter:    latest ${tps(speed.latest)}   avg ${tps(speed.average)}${samples}`;
+}
+
 export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string, piCrumbsRotationIndex?: number): string[] {
   const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel, piCrumbsRotationIndex);
   const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
@@ -83,6 +134,7 @@ export function detailLines(store: TallyStore, activeTreePathPrompts: number, no
     `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active days / ${compactNumber(s.calendarDays)} calendar days)`,
     `Tree:          ${messageCount(s.activeTreePathPrompts)} on active path`,
     `Today:         ${messageCount(s.todayPrompts)} so far${hourlySuffix}`,
+    responseSpeedLine(s.responseSpeed),
     `Daily avg:     ${messageCount(s.activeDayAverage)}/day   last 24h ${messageCount(s.last24HourPrompts)}`,
     `Recent avg:    7d ${messageCount(s.weeklyAverage)}/day${s.weeklyTrend}   30d ${messageCount(s.monthlyAverage)}/day${s.monthlyTrend}`,
     `5h window:     avg ${messageCount(s.fiveHourDemand.average)}   high ${messageCount(s.fiveHourDemand.high)}   peak ${messageCount(s.fiveHourDemand.peak)}`,
@@ -103,6 +155,7 @@ export function allDetailLines(store: TallyStore, activeTreePathPrompts: number,
     `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active days / ${compactNumber(s.calendarDays)} calendar days)`,
     `Tree:          ${messageCount(s.activeTreePathPrompts)} on active path`,
     `Today:         ${messageCount(s.todayPrompts)} so far${hourlySuffix}`,
+    responseSpeedLine(s.responseSpeed),
     `Daily avg:     ${messageCount(s.activeDayAverage)}/day   last 24h ${messageCount(s.last24HourPrompts)}`,
     `Recent avg:    7d ${messageCount(s.weeklyAverage)}/day${s.weeklyTrend}   30d ${messageCount(s.monthlyAverage)}/day${s.monthlyTrend}`,
     `5h window:     avg ${messageCount(s.fiveHourDemand.average)}   high ${messageCount(s.fiveHourDemand.high)}   peak ${messageCount(s.fiveHourDemand.peak)}`,
@@ -123,6 +176,7 @@ export function statusLines(paths: TallyPaths, store: TallyStore): string[] {
     `Sessions   ${paths.sessionsDir}`,
     `Indexed    ${compactNumber(Object.keys(store.files).length)} session files`,
     `Footer     ${store.footerEnabled === false ? "disabled" : "enabled"}`,
+    `Toks       ${store.toksEnabled === false ? "disabled" : "enabled"}`,
     `Updated    ${store.updatedAt}`,
     "",
     "pi-tally only counts local Pi session messages and stores the tally locally.",

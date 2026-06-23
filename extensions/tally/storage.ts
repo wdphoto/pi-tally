@@ -19,6 +19,25 @@ function isFileRecord(value: unknown): value is FileRecord {
   );
 }
 
+function migrateResponses(record: FileRecord) {
+  if (!Array.isArray(record.responses)) return undefined;
+  const responses = record.responses.flatMap((response) => {
+    if (!isObject(response) || typeof response.timestamp !== "number" || typeof response.date !== "string" || typeof response.hour !== "string") return [];
+    if (typeof response.outputTokens !== "number" || !Number.isFinite(response.outputTokens) || response.outputTokens <= 0) return [];
+    if (typeof response.durationMs !== "number" || !Number.isFinite(response.durationMs) || response.durationMs <= 0) return [];
+    return [{
+      ...(typeof response.id === "string" ? { id: response.id } : {}),
+      timestamp: response.timestamp,
+      date: response.date,
+      hour: response.hour,
+      outputTokens: Math.floor(response.outputTokens),
+      durationMs: Math.round(response.durationMs),
+      ...(typeof response.model === "string" ? { model: response.model } : {}),
+    }];
+  });
+  return responses.length > 0 ? responses : undefined;
+}
+
 export function migrateStore(raw: unknown, now = new Date()): TallyStore {
   if (!isObject(raw) || raw.version !== STORE_VERSION) return createEmptyStore(now);
 
@@ -26,6 +45,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
   if (isObject(raw.files)) {
     for (const [path, record] of Object.entries(raw.files)) {
       if (!isFileRecord(record)) continue;
+      const responses = migrateResponses(record);
       files[path] = {
         path: record.path,
         sessionId: record.sessionId,
@@ -42,6 +62,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
             ...(chars !== undefined ? { chars } : {}),
           }];
         }),
+        ...(responses ? { responses } : {}),
         ...(typeof record.earliestDate === "string" ? { earliestDate: record.earliestDate } : {}),
       };
     }
@@ -55,6 +76,7 @@ export function migrateStore(raw: unknown, now = new Date()): TallyStore {
     sessions: {},
     crumbs: { totalChars: 0, dailyChars: {}, longestPromptChars: 0 },
     footerEnabled: raw.footerEnabled !== false,
+    toksEnabled: raw.toksEnabled !== false,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now.toISOString(),
     ...(typeof raw.previousActiveDayAverage === "number" ? { previousActiveDayAverage: raw.previousActiveDayAverage } : {}),
   };
@@ -71,14 +93,27 @@ export async function loadStore(path: string, now = new Date()): Promise<TallySt
   }
 }
 
-export async function loadFooterPreference(path: string): Promise<boolean | undefined> {
+export interface TallyPreferences {
+  footerEnabled?: boolean;
+  toksEnabled?: boolean;
+}
+
+export async function loadTallyPreferences(path: string): Promise<TallyPreferences> {
   try {
     const raw = JSON.parse(await readFile(path, "utf8")) as unknown;
-    if (isObject(raw) && raw.version === STORE_VERSION && typeof raw.footerEnabled === "boolean") return raw.footerEnabled;
+    if (!isObject(raw) || raw.version !== STORE_VERSION) return {};
+    return {
+      ...(typeof raw.footerEnabled === "boolean" ? { footerEnabled: raw.footerEnabled } : {}),
+      ...(typeof raw.toksEnabled === "boolean" ? { toksEnabled: raw.toksEnabled } : {}),
+    };
   } catch {
     // Ignore missing, malformed, or partially-written files.
   }
-  return undefined;
+  return {};
+}
+
+export async function loadFooterPreference(path: string): Promise<boolean | undefined> {
+  return (await loadTallyPreferences(path)).footerEnabled;
 }
 
 export async function saveStoreAtomic(path: string, store: TallyStore): Promise<void> {

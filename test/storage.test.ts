@@ -34,6 +34,7 @@ test("migrateStore rebuilds aggregates from file records", () => {
   assert.equal(store.sessions.s1, 1);
   assert.equal(store.crumbs.totalChars, 0);
   assert.equal(store.footerEnabled, true);
+  assert.equal(store.toksEnabled, true);
 });
 
 test("migrateStore preserves prompt character crumbs", () => {
@@ -56,6 +57,27 @@ test("migrateStore preserves prompt character crumbs", () => {
   assert.equal(store.crumbs.dailyChars["2026-06-15"], 12);
 });
 
+test("migrateStore preserves response speed facts", () => {
+  const store = migrateStore({
+    version: 1,
+    updatedAt: fixedNow.toISOString(),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 10,
+        prompts: [],
+        responses: [{ timestamp: 1, date: "2026-06-15", hour: "09", outputTokens: 100, durationMs: 5000, model: "test/fast" }],
+      },
+    },
+  }, fixedNow);
+
+  assert.equal(store.files.a?.responses?.[0]?.outputTokens, 100);
+  assert.equal(store.files.a?.responses?.[0]?.durationMs, 5000);
+  assert.equal(store.files.a?.responses?.[0]?.model, "test/fast");
+});
+
 test("migrateStore preserves persisted updatedAt", () => {
   const persistedAt = "2026-06-14T01:02:03.000Z";
   const store = migrateStore({
@@ -76,6 +98,17 @@ test("migrateStore preserves disabled footer setting", () => {
   }, fixedNow);
 
   assert.equal(store.footerEnabled, false);
+});
+
+test("migrateStore preserves disabled toks setting", () => {
+  const store = migrateStore({
+    version: 1,
+    updatedAt: fixedNow.toISOString(),
+    toksEnabled: false,
+    files: {},
+  }, fixedNow);
+
+  assert.equal(store.toksEnabled, false);
 });
 
 test("saveStoreAtomic writes a loadable local persistence file", async () => {

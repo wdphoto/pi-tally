@@ -8,12 +8,23 @@ export interface PromptFact {
   chars?: number;
 }
 
+export interface ResponseFact {
+  id?: string;
+  timestamp: number;
+  date: string;
+  hour: string;
+  outputTokens: number;
+  durationMs: number;
+  model?: string;
+}
+
 export interface FileRecord {
   path: string;
   sessionId: string;
   mtimeMs: number;
   size: number;
   prompts: PromptFact[];
+  responses?: ResponseFact[];
   earliestDate?: string;
 }
 
@@ -33,6 +44,7 @@ export interface TallyStore {
   earliestDate?: string;
   previousActiveDayAverage?: number;
   footerEnabled: boolean;
+  toksEnabled: boolean;
   updatedAt: string;
 }
 
@@ -55,11 +67,18 @@ export interface FiveHourDemandStats {
   lookbackDays: number;
 }
 
+export interface ResponseSpeedStats {
+  latest?: number;
+  average?: number;
+  samples: number;
+}
+
 export interface DetailSnapshot {
   activeModel?: string;
   activeTreePathPrompts: number;
   todayPrompts: number;
   hourlyRate: string;
+  responseSpeed: ResponseSpeedStats;
   fiveHourDemand: FiveHourDemandStats;
   activeDayAverage: number;
   last24HourPrompts: number;

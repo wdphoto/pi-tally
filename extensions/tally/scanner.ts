@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createEmptyStore, promptFactFromEntry, recomputeAggregates } from "./stats.ts";
+import { createEmptyStore, promptFactFromEntry, recomputeAggregates, responseFactFromEntry } from "./stats.ts";
 import type { FileRecord, ScanResult, TallyStore } from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,15 +31,19 @@ export function parseSessionJsonl(content: string, filePath: string, fileStat?: 
   }
 
   const prompts = [];
+  const responses = [];
   for (let i = firstPromptLine; i < lines.length; i++) {
     const line = lines[i];
     if (!line || !line.includes('"message"')) continue;
     try {
       const entry: unknown = JSON.parse(line);
-      const fact = promptFactFromEntry(entry, fallbackTimestamp);
-      if (!fact) continue;
-      prompts.push(fact);
-      if (!earliestDate || fact.date < earliestDate) earliestDate = fact.date;
+      const prompt = promptFactFromEntry(entry, fallbackTimestamp);
+      if (prompt) {
+        prompts.push(prompt);
+        if (!earliestDate || prompt.date < earliestDate) earliestDate = prompt.date;
+      }
+      const response = responseFactFromEntry(entry, fallbackTimestamp);
+      if (response) responses.push(response);
     } catch {
       // Ignore malformed JSONL rows.
     }
@@ -51,6 +55,7 @@ export function parseSessionJsonl(content: string, filePath: string, fileStat?: 
     mtimeMs: fileStat?.mtimeMs ?? 0,
     size: fileStat?.size ?? content.length,
     prompts,
+    ...(responses.length > 0 ? { responses } : {}),
     ...(earliestDate ? { earliestDate } : {}),
   };
 }

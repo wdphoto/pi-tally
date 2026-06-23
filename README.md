@@ -6,13 +6,19 @@ A small local user prompt counter for Pi. It adds a compact tally to the footer 
 
 Use `/tally run` after installing to count your session history.
 
-Hide or restore the footer with `/tally footer` to toggle. The toggle applies across projects using the same Pi agent directory.
+Hide or restore the footer with `/tally footer` to toggle. Toggle the live `tok/s` footer meter with `/tally toks`. These toggles apply across projects using the same Pi agent directory.
 
 That's pretty much it. Definitely a work in progress.
 
 Footer example:
 ```text
 5/52/84↑
+```
+
+While the assistant is streaming, the footer can add a live output-token speedometer:
+
+```text
+5/52/84↑  ~42 tok/s ●●●○○○○
 ```
 That means:
 - `5` prompts today on the active Pi tree path
@@ -44,6 +50,7 @@ Restart Pi after installing.
 /tally              show your stats
 /tally all          show verbose stat output
 /tally footer       toggle footer tally on/off
+/tally toks         toggle live tok/s footer meter on/off
 /tally status       show storage/index info
 ```
 
@@ -55,6 +62,7 @@ A `/tally` report looks roughly like this:
 Since:         2026-03-07 (60 active days / 101 calendar days)
 Tree:          5 messages on active path
 Today:         52 messages so far (4.1 messages/hr)
+TPS meter:    latest 32 tok/s   avg 28 tok/s (42 samples)
 Daily avg:     84 messages/day   last 24h 52 messages
 Recent avg:    7d 96 messages/day↑   30d 88 messages/day↓
 5h window:     avg 64 messages   high 91 messages   peak 121 messages
@@ -64,6 +72,8 @@ Total:         5.6k messages across 350 sessions
 
 Crumb:         899,934 characters sent to Pi.
 ```
+
+The TPS meter is output tokens per second (`tok/s`) for assistant responses when Pi provides token usage and timing.
 
 ## Data
 

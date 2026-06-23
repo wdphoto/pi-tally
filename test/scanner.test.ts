@@ -42,6 +42,33 @@ test("parseSessionJsonl handles a user message on the first line", () => {
   assert.equal(record.prompts[0]?.chars, 5);
 });
 
+test("parseSessionJsonl records assistant response speed facts when usage and timing exist", () => {
+  const content = sessionJsonl("s1", [
+    JSON.stringify({ type: "message", id: "u1", timestamp: "2026-06-15T09:00:00.000Z", message: { role: "user", content: "go" } }),
+    JSON.stringify({
+      type: "message",
+      id: "a1",
+      timestamp: "2026-06-15T09:00:06.000Z",
+      message: {
+        role: "assistant",
+        timestamp: "2026-06-15T09:00:01.000Z",
+        provider: "test",
+        model: "fast-one",
+        usage: { output: 100 },
+      },
+    }),
+  ]);
+
+  const record = parseSessionJsonl(content, "/tmp/s1.jsonl");
+
+  assert.ok(record);
+  assert.equal(record.responses?.length, 1);
+  assert.equal(record.responses?.[0]?.id, "a1");
+  assert.equal(record.responses?.[0]?.outputTokens, 100);
+  assert.equal(record.responses?.[0]?.durationMs, 5000);
+  assert.equal(record.responses?.[0]?.model, "test/fast-one");
+});
+
 test("scanAllSessions walks nested Pi session directories", async () => {
   const sessionsDir = join(tmpdir(), `pi-tally-${process.pid}-${Date.now()}`, "sessions");
   const projectDir = join(sessionsDir, "--demo--");

@@ -4,6 +4,11 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.10 - 2026-06-23
+
+- Added a persistent footer TPS speedometer while enabled, with live staged dot indicators after the normal tally counters and `/tally toks` to toggle it.
+- Added a local TPS meter to `/tally` output, reporting latest and average assistant output tokens per second when response timing and token usage are available.
+
 ## 0.0.9 - 2026-06-21
 
 - Added more local-only Crumbs from existing tally data: suspicious hours, late-night share, weekend/weekday patterns, quiet gaps, session size, prompt storms, character records, and near-milestones.

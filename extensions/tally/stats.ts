@@ -1,5 +1,5 @@
 import { ACTIVE_DAY_MIN_PROMPTS, FIVE_HOUR_DEMAND_LOOKBACK_DAYS, FIVE_HOUR_WINDOW_HOURS } from "./config.ts";
-import { STORE_VERSION, type FileRecord, type FiveHourDemandStats, type PiCrumbs, type PromptFact, type TallyStore } from "./types.ts";
+import { STORE_VERSION, type FileRecord, type FiveHourDemandStats, type PiCrumbs, type PromptFact, type ResponseFact, type ResponseSpeedStats, type TallyStore } from "./types.ts";
 
 export function createEmptyStore(now = new Date()): TallyStore {
   return {
@@ -10,6 +10,7 @@ export function createEmptyStore(now = new Date()): TallyStore {
     sessions: {},
     crumbs: emptyPiCrumbs(),
     footerEnabled: true,
+    toksEnabled: true,
     updatedAt: now.toISOString(),
   };
 }
@@ -57,9 +58,15 @@ function computePiCrumbs(files: Record<string, FileRecord>): PiCrumbs {
   return crumbs;
 }
 
+function timestampMs(value: unknown): number | undefined {
+  if (typeof value !== "number" && typeof value !== "string") return undefined;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function bucketFromTimestamp(ts: unknown, fallback = Date.now()): { timestamp: number; date: string; hour: string } {
-  const value = typeof ts === "number" || typeof ts === "string" ? ts : fallback;
-  const candidate = new Date(value);
+  const candidateMs = timestampMs(ts) ?? fallback;
+  const candidate = new Date(candidateMs);
   const safe = Number.isNaN(candidate.getTime()) ? new Date(fallback) : candidate;
   const date = `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}-${String(safe.getDate()).padStart(2, "0")}`;
   const hour = String(safe.getHours()).padStart(2, "0");
@@ -93,6 +100,7 @@ export function recomputeAggregates(store: TallyStore, now = new Date()): TallyS
     sessions: {},
     crumbs: emptyPiCrumbs(),
     footerEnabled: store.footerEnabled !== false,
+    toksEnabled: store.toksEnabled !== false,
     updatedAt: now.toISOString(),
     ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),
   };
@@ -199,6 +207,7 @@ export function replaceFileRecordIncremental(store: TallyStore, record: FileReco
       longestPromptChars: longestPrompt,
     },
     footerEnabled: store.footerEnabled !== false,
+    toksEnabled: store.toksEnabled !== false,
     updatedAt: now.toISOString(),
     ...(earliestDate ? { earliestDate } : {}),
     ...(store.previousActiveDayAverage !== undefined ? { previousActiveDayAverage: store.previousActiveDayAverage } : {}),
@@ -235,6 +244,59 @@ export function promptFactFromEntry(entry: unknown, fallback = Date.now()): Prom
     hour: bucket.hour,
     ...(chars > 0 ? { chars } : {}),
   };
+}
+
+function assistantOutputTokens(message: unknown): number {
+  if (!message || typeof message !== "object") return 0;
+  const usage = (message as { usage?: unknown }).usage;
+  if (!usage || typeof usage !== "object") return 0;
+  const output = (usage as { output?: unknown }).output;
+  return typeof output === "number" && Number.isFinite(output) && output > 0 ? Math.floor(output) : 0;
+}
+
+function assistantModelLabel(message: unknown): string | undefined {
+  if (!message || typeof message !== "object") return undefined;
+  const m = message as { provider?: unknown; model?: unknown };
+  const provider = typeof m.provider === "string" ? m.provider : undefined;
+  const model = typeof m.model === "string" ? m.model : undefined;
+  if (!model) return undefined;
+  return provider ? `${provider}/${model}` : model;
+}
+
+function isAssistantMessageEntry(entry: unknown): boolean {
+  if (!entry || typeof entry !== "object") return false;
+  const e = entry as { type?: unknown; message?: { role?: unknown } };
+  return e.type === "message" && e.message?.role === "assistant";
+}
+
+function responseFactFromParts(options: { id?: unknown; endTimestamp: number; startedAt: number | undefined; message: unknown }): ResponseFact | undefined {
+  const outputTokens = assistantOutputTokens(options.message);
+  if (outputTokens <= 0) return undefined;
+  const durationMs = typeof options.startedAt === "number" && Number.isFinite(options.startedAt) ? Math.round(options.endTimestamp - options.startedAt) : 0;
+  if (durationMs <= 0) return undefined;
+  const bucket = bucketFromTimestamp(options.endTimestamp);
+  const model = assistantModelLabel(options.message);
+  return {
+    ...(typeof options.id === "string" ? { id: options.id } : {}),
+    timestamp: bucket.timestamp,
+    date: bucket.date,
+    hour: bucket.hour,
+    outputTokens,
+    durationMs,
+    ...(model ? { model } : {}),
+  };
+}
+
+export function responseFactFromEntry(entry: unknown, fallbackEnd = Date.now()): ResponseFact | undefined {
+  if (!isAssistantMessageEntry(entry)) return undefined;
+  const e = entry as { id?: unknown; timestamp?: unknown; message?: { timestamp?: unknown } };
+  const endTimestamp = timestampMs(e.timestamp) ?? timestampMs(e.message?.timestamp) ?? fallbackEnd;
+  return responseFactFromParts({ id: e.id, endTimestamp, startedAt: timestampMs(e.message?.timestamp), message: e.message });
+}
+
+export function responseFactFromAssistantMessage(message: unknown, startedAt: number | undefined, endedAt = Date.now()): ResponseFact | undefined {
+  if (!message || typeof message !== "object" || (message as { role?: unknown }).role !== "assistant") return undefined;
+  return responseFactFromParts({ endTimestamp: endedAt, startedAt, message });
 }
 
 export function activeDayCounts(store: Pick<TallyStore, "daily">, windowDays?: number, now = new Date()): number[] {
@@ -308,6 +370,37 @@ export function todayHourlyRate(store: TallyStore, now = new Date()): string {
   if (hours < 0.5) return "—";
   const rate = todayPrompts(store, now) / hours;
   return rate >= 0.05 ? rate.toFixed(1) : "—";
+}
+
+function responseTps(response: ResponseFact): number | undefined {
+  if (response.outputTokens <= 0 || response.durationMs <= 0) return undefined;
+  return response.outputTokens / (response.durationMs / 1000);
+}
+
+export function responseSpeedStats(store: TallyStore): ResponseSpeedStats {
+  let samples = 0;
+  let outputTokens = 0;
+  let durationMs = 0;
+  let latest: ResponseFact | undefined;
+
+  for (const record of Object.values(store.files)) {
+    for (const response of record.responses ?? []) {
+      const tps = responseTps(response);
+      if (tps === undefined || !Number.isFinite(tps)) continue;
+      samples++;
+      outputTokens += response.outputTokens;
+      durationMs += response.durationMs;
+      if (!latest || response.timestamp > latest.timestamp) latest = response;
+    }
+  }
+
+  const latestTps = latest ? responseTps(latest) : undefined;
+  const average = durationMs > 0 ? outputTokens / (durationMs / 1000) : undefined;
+  return {
+    ...(latestTps !== undefined ? { latest: latestTps } : {}),
+    ...(average !== undefined ? { average } : {}),
+    samples,
+  };
 }
 
 function lowerBound(values: number[], target: number): number {

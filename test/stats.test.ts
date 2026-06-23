@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allDetailLines, detailLines, footerText, modelChoiceLabel } from "../extensions/tally/ui.ts";
-import { activeDayAverage, bucketFromTimestamp, createEmptyStore, dailyHigh, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, totalSubmittedChars, trendArrow, trendArrowForStore, userMessageCharCount } from "../extensions/tally/stats.ts";
+import { allDetailLines, detailLines, footerStatusText, footerText, modelChoiceLabel, speedometerText } from "../extensions/tally/ui.ts";
+import { activeDayAverage, bucketFromTimestamp, createEmptyStore, dailyHigh, daysBetween, fiveHourDemand, recomputeAggregates, replaceFileRecordIncremental, responseSpeedStats, totalSubmittedChars, trendArrow, trendArrowForStore, userMessageCharCount } from "../extensions/tally/stats.ts";
 
 const fixedNow = new Date("2026-06-15T12:00:00");
 
@@ -136,6 +136,28 @@ test("Crumb current record streak wording is direct", () => {
   assert.doesNotMatch(crumb, /agent/);
 });
 
+test("responseSpeedStats reports latest and weighted average tokens per second", () => {
+  const store = recomputeAggregates({
+    ...createEmptyStore(fixedNow),
+    files: {
+      a: {
+        path: "a",
+        sessionId: "s1",
+        mtimeMs: 0,
+        size: 0,
+        prompts: [],
+        responses: [
+          { ...promptAt("2026-06-15", 10), outputTokens: 100, durationMs: 5000 },
+          { ...promptAt("2026-06-15", 11), outputTokens: 60, durationMs: 2000 },
+        ],
+      },
+    },
+  }, fixedNow);
+
+  assert.deepEqual(responseSpeedStats(store), { latest: 30, average: 160 / 7, samples: 2 });
+  assert.ok(detailLines(store, 0, fixedNow).includes("TPS meter:    latest 30 tok/s   avg 23 tok/s (2 samples)"));
+});
+
 test("allDetailLines lists every available Crumb", () => {
   const store = recomputeAggregates({
     ...createEmptyStore(fixedNow),
@@ -226,6 +248,19 @@ test("footerText formats compact counters", () => {
   }, fixedNow);
 
   assert.equal(footerText(5, store, "↑", fixedNow), "5/12/12↑");
+  assert.equal(footerStatusText(5, store, "↑", { tps: 0 }, { fg: (_color, value) => value }, fixedNow), "5/12/12↑  0.0 tok/s ○○○○○○○");
+  assert.equal(footerStatusText(5, store, "↑", { tps: 42, live: true }, { fg: (_color, value) => value }, fixedNow), "5/12/12↑  ~42 tok/s ●●●○○○○");
+});
+
+test("speedometerText colors stage jumps independently", () => {
+  const colors: string[] = [];
+  const theme = { fg: (color: string, value: string) => {
+    colors.push(color);
+    return value;
+  } };
+
+  assert.equal(speedometerText({ tps: 120 }, theme), "120 tok/s ●●●●●●●");
+  assert.deepEqual(colors, ["dim", "dim", "dim", "muted", "muted", "text", "accent", "accent"]);
 });
 
 test("replaceFileRecordIncremental updates aggregates without a full recompute", () => {
