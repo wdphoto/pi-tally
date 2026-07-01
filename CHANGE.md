@@ -4,6 +4,12 @@ All notable changes to `pi-tally` are tracked here.
 
 ## Unreleased
 
+## 0.0.11 - 2026-07-01
+
+- Refactored the extension entrypoint into a thin Pi adapter backed by a `TallyController` for store lifecycle, session reconciliation, preference syncing, footer state, and saves.
+- Moved Pi session-manager adaptation, pending message dedupe, serialized store saves, and live tok/s tracking into focused runtime modules.
+- Shared the stat-line renderer used by `/tally` and `/tally all` so the two views stay aligned.
+
 ## 0.0.10 - 2026-06-23
 
 - Added a persistent footer TPS speedometer while enabled, with live staged dot indicators after the normal tally counters and `/tally toks` to toggle it.

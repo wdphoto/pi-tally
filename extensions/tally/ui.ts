@@ -125,8 +125,7 @@ function responseSpeedLine(speed: DetailSnapshot["responseSpeed"]): string {
   return `TPS meter:    latest ${tps(speed.latest)}   avg ${tps(speed.average)}${samples}`;
 }
 
-export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string, piCrumbsRotationIndex?: number): string[] {
-  const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel, piCrumbsRotationIndex);
+function statLines(s: DetailSnapshot): string[] {
   const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
   const record = s.recordDay ? `${messageCount(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
   const streak = s.currentStreakDays > 0 ? `${dayCount(s.currentStreakDays)} current / ${dayCount(s.longestStreakDays)} record` : "—";
@@ -141,6 +140,13 @@ export function detailLines(store: TallyStore, activeTreePathPrompts: number, no
     `Streak:        ${streak}`,
     `Record:        ${record}`,
     `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
+  ];
+}
+
+export function detailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string, piCrumbsRotationIndex?: number): string[] {
+  const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel, piCrumbsRotationIndex);
+  return [
+    ...statLines(s),
     "",
     `Crumb:         ${s.piCrumbsFact}`,
   ];
@@ -148,20 +154,8 @@ export function detailLines(store: TallyStore, activeTreePathPrompts: number, no
 
 export function allDetailLines(store: TallyStore, activeTreePathPrompts: number, now = new Date(), activeModel?: string): string[] {
   const s = buildDetailSnapshot(store, activeTreePathPrompts, now, activeModel);
-  const hourlySuffix = s.hourlyRate !== "—" ? ` (${s.hourlyRate} messages/hr)` : "";
-  const record = s.recordDay ? `${messageCount(s.recordDay.prompts)} on ${s.recordDay.date}` : "—";
-  const streak = s.currentStreakDays > 0 ? `${dayCount(s.currentStreakDays)} current / ${dayCount(s.longestStreakDays)} record` : "—";
   return [
-    `Since:         ${s.earliestDate || "?"} (${compactNumber(s.activeDays)} active days / ${compactNumber(s.calendarDays)} calendar days)`,
-    `Tree:          ${messageCount(s.activeTreePathPrompts)} on active path`,
-    `Today:         ${messageCount(s.todayPrompts)} so far${hourlySuffix}`,
-    responseSpeedLine(s.responseSpeed),
-    `Daily avg:     ${messageCount(s.activeDayAverage)}/day   last 24h ${messageCount(s.last24HourPrompts)}`,
-    `Recent avg:    7d ${messageCount(s.weeklyAverage)}/day${s.weeklyTrend}   30d ${messageCount(s.monthlyAverage)}/day${s.monthlyTrend}`,
-    `5h window:     avg ${messageCount(s.fiveHourDemand.average)}   high ${messageCount(s.fiveHourDemand.high)}   peak ${messageCount(s.fiveHourDemand.peak)}`,
-    `Streak:        ${streak}`,
-    `Record:        ${record}`,
-    `Total:         ${messageCount(s.allTimePrompts)} across ${sessionCount(s.totalSessions)}`,
+    ...statLines(s),
     "",
     "Crumbs:",
     ...piCrumbsFacts(store, now, activeModel).map((fact) => `- ${fact}`),
